@@ -885,11 +885,23 @@ if FRONTEND_DIST.exists():
 
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
-        file_path = FRONTEND_DIST / full_path
+        clean_path = full_path.lstrip("/\\")
+        file_path = FRONTEND_DIST / clean_path
         if file_path.is_file():
-            return FileResponse(file_path)
+            media_type = None
+            if clean_path.endswith(".js"):
+                media_type = "application/javascript"
+            elif clean_path.endswith(".css"):
+                media_type = "text/css"
+            elif clean_path.endswith(".svg"):
+                media_type = "image/svg+xml"
+            elif clean_path.endswith(".png"):
+                media_type = "image/png"
+            elif clean_path.endswith(".ico"):
+                media_type = "image/x-icon"
+            return FileResponse(file_path, media_type=media_type)
         index_file = FRONTEND_DIST / "index.html"
         if index_file.is_file():
-            return FileResponse(index_file)
+            return FileResponse(index_file, media_type="text/html")
         raise HTTPException(status_code=404, detail="Resource not found")
 
