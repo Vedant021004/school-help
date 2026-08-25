@@ -915,7 +915,9 @@ def update_settings(payload: Dict[str, Any]):
 
 
 
-# Mount all API endpoints with /api prefix AND without prefix (for Vercel serverless compatibility)
+# Mount all API endpoints with /api/index.py, /api/index, /api prefix AND without prefix (for Vercel serverless compatibility)
+app.include_router(router, prefix="/api/index.py")
+app.include_router(router, prefix="/api/index")
 app.include_router(router, prefix="/api")
 app.include_router(router)
 
