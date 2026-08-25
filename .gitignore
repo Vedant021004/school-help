@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.env
+.pytest_cache/
+
+# Node / Frontend
+node_modules/
+frontend/node_modules/
+
+# Large Model Weights & Data
+*.pt
+*.onnx
+*.pkl
+*.npz
+data/
+backend/data/uploads/*
+backend/data/exports/*
+backend/data/chroma_db/
+!backend/data/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db

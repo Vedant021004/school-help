@@ -1,2 +1,11 @@
-ultralytics==8.0.92
-scikit-learn==1.2.2
+ultralytics>=8.0.0
+torch>=2.0.0
+torchvision>=0.15.0
+transformers>=4.30.0
+timm>=0.9.0
+scikit-learn>=1.2.0
+pillow>=9.0.0
+pandas>=1.5.0
+opencv-python>=4.7.0
+streamlit>=1.25.0
+matplotlib>=3.7.0
