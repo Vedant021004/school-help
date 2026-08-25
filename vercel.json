@@ -1,11 +1,15 @@
 {
   "functions": {
-    "api/**/*.py": {
+    "api/*.py": {
       "memory": 1024,
       "maxDuration": 30
     }
   },
   "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index.py?__subpath__=$1"
+    },
     {
       "source": "/((?!api/|assets/|favicon.ico).*)",
       "destination": "/index.html"

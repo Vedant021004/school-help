@@ -50,6 +50,16 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def extract_subpath_middleware(request: Request, call_next):
+    subpath = request.query_params.get("__subpath__")
+    if subpath:
+        clean_sub = subpath.lstrip("/")
+        request.scope["path"] = "/" + clean_sub
+        request.scope["raw_path"] = request.scope["path"].encode("latin1")
+    return await call_next(request)
+
+
 @app.exception_handler(404)
 async def custom_404_handler(request: Request, exc: Any):
     return JSONResponse(
