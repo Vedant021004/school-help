@@ -854,7 +854,7 @@ def update_settings(payload: Dict[str, Any]):
 # ==========================================
 
 FRONTEND_DIST = settings.BASE_DIR.parent / "frontend" / "dist"
-if FRONTEND_DIST.exists():
+if not settings.IS_SERVERLESS and FRONTEND_DIST.exists():
     app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="static_assets")
 
     @app.get("/{full_path:path}")

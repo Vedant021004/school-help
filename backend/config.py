@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "AI Teacher Assistant - Question Paper Generator"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
+    IS_SERVERLESS: bool = IS_SERVERLESS
     
     # Storage paths
     BASE_DIR: Path = BASE_DIR
