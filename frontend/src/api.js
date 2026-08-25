@@ -187,6 +187,30 @@ export async function fetchSettings() {
   return res.json();
 }
 
+export async function fetchNcertCatalog(filters = {}) {
+  const params = new URLSearchParams();
+  if (filters.query) params.append('query', filters.query);
+  if (filters.class_grade) params.append('class_grade', filters.class_grade);
+  if (filters.subject) params.append('subject', filters.subject);
+
+  const res = await fetch(`${API_BASE}/ncert/catalog?${params.toString()}`);
+  if (!res.ok) throw new Error('Failed to fetch NCERT catalog');
+  return res.json();
+}
+
+export async function importNcertBook(bookCode) {
+  const res = await fetch(`${API_BASE}/ncert/import`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code: bookCode }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Import failed' }));
+    throw new Error(err.detail || 'Failed to import NCERT textbook');
+  }
+  return res.json();
+}
+
 export async function saveSettings(settingsData) {
   const res = await fetch(`${API_BASE}/settings`, {
     method: 'POST',
@@ -196,3 +220,5 @@ export async function saveSettings(settingsData) {
   if (!res.ok) throw new Error('Failed to update settings');
   return res.json();
 }
+
+

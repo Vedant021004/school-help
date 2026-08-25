@@ -27,6 +27,7 @@ from backend.exporters import (
     export_question_paper_pdf, export_answer_key_pdf, export_question_paper_docx
 )
 
+from backend.ncert_service import search_ncert_catalog, import_ncert_textbook
 # Initialize database schema and seeds
 db.init_db()
 
@@ -194,6 +195,38 @@ def reindex_book(book_id: str):
 def delete_book(book_id: str):
     success = db.delete_book(book_id)
     return {"success": success}
+
+
+# ==========================================
+# 2.5 NCERT TEXTBOOK DIRECTORY & IMPORTER API
+# ==========================================
+
+@app.get("/api/ncert/catalog")
+def get_ncert_catalog(
+    query: Optional[str] = None,
+    class_grade: Optional[str] = None,
+    subject: Optional[str] = None
+):
+    """
+    Search and browse official NCERT textbooks directory (Class 1 to 12).
+    """
+    return search_ncert_catalog(query=query, class_grade=class_grade, subject=subject)
+
+
+@app.post("/api/ncert/import", response_model=Book)
+def import_ncert_book(payload: Dict[str, str]):
+    """
+    Directly imports, parses, and indexes an official NCERT textbook by its code (e.g. 'jesc1', 'jemh1').
+    """
+    book_code = payload.get("code")
+    if not book_code:
+        raise HTTPException(status_code=400, detail="Missing NCERT book code")
+
+    try:
+        imported_book = import_ncert_textbook(book_code)
+        return imported_book
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to import NCERT textbook: {str(e)}")
 
 
 # ==========================================

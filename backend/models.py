@@ -27,8 +27,8 @@ class Book(BaseModel):
     board: str = "CBSE"
     author: Optional[str] = "NCERT / Educational Board"
     academic_year: Optional[str] = "2025-2026"
-    filename: str
-    file_path: str
+    filename: Optional[str] = "textbook.pdf"
+    file_path: Optional[str] = ""
     file_size_bytes: int = 0
     total_pages: int = 0
     chapters: List[Chapter] = Field(default_factory=list)

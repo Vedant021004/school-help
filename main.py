@@ -1,119 +1,131 @@
-import os
-from ultralytics import YOLO
-import glob
-from src.img2vec_dino2 import Img2VecDino2
-from src.img2vec_resnet18 import Img2VecResnet18
-from PIL import Image
-from  sklearn.neighbors import NearestNeighbors
-from collections import Counter
-from pathlib import Path
-import argparse
+#!/usr/bin/env python3
+"""
+CartEye CLI - Smart Cart & Shelf Product Identifier.
+Usage:
+    python main.py --input "data/img/testing.jpg"
+    python main.py --input "data/img/retail.jpg" --embedder dinov2_small --conf 0.45
+"""
 
-MODEL_PATH = 'models/best.pt'
-DATA_PATH = 'data'
-N_NEIGHBORS = 5
-model = "dino2"  # options: "resnet18" or "dino2"
+import argparse
+import os
+from pathlib import Path
+from carteye.pipeline import CartEyePipeline
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="CartEye: AI-Powered Smart Cart & Shelf Product Identifier"
+    )
+    parser.add_argument(
+        "--input",
+        type=str,
+        default="data/img/testing.jpg",
+        help="Input image path (e.g. data/img/testing.jpg)",
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="models/best.pt",
+        help="Path to YOLOv8 SKU detection model weights",
+    )
+    parser.add_argument(
+        "--embedder",
+        type=str,
+        default="dinov2_small",
+        choices=["dinov2_small", "dinov2_base", "resnet18", "resnet50", "efficientnet"],
+        help="Embedding backbone for product matching (default: dinov2_small)",
+    )
+    parser.add_argument(
+        "--kb",
+        type=str,
+        default="data/knowledge_base/crops/object",
+        help="Directory containing reference product crops categorized by folder",
+    )
+    parser.add_argument(
+        "--conf",
+        type=float,
+        default=0.40,
+        help="Detection confidence threshold (default: 0.40)",
+    )
+    parser.add_argument(
+        "--iou",
+        type=float,
+        default=0.45,
+        help="NMS IoU threshold (default: 0.45)",
+    )
+    parser.add_argument(
+        "--k",
+        type=int,
+        default=5,
+        help="Number of nearest neighbors for best-fit voting (default: 5)",
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default=None,
+        help="Output directory to save predictions, crops, and annotated image (default: data/<image_stem>)",
+    )
+    parser.add_argument(
+        "--no-crops",
+        action="store_true",
+        help="Disable saving individual cropped product images",
+    )
+
+    args = parser.parse_args()
+
+    if not os.path.exists(args.input):
+        print(f"Error: Input file '{args.input}' does not exist.")
+        return
+
+    output_dir = args.output
+    if output_dir is None:
+        stem = Path(args.input).stem
+        output_dir = os.path.join("data", stem)
+
+    print(f"\n" + "=" * 60)
+    print(f"  👁️  CartEye: Smart Cart & Shelf Product Identifier")
+    print(f"=" * 60)
+    print(f"  - Input Image     : {args.input}")
+    print(f"  - YOLO Weights    : {args.model}")
+    print(f"  - Embedder Model  : {args.embedder}")
+    print(f"  - Knowledge Base  : {args.kb}")
+    print(f"  - Output Directory: {output_dir}")
+    print(f"=" * 60 + "\n")
+
+    # Initialize CartEye Pipeline
+    pipeline = CartEyePipeline(
+        yolo_model_path=args.model,
+        embedder_name=args.embedder,
+        knowledge_base_dir=args.kb,
+        n_neighbors=args.k,
+    )
+
+    print(f"[CartEye] Processing image '{args.input}'...")
+    results = pipeline.process_image(
+        image_input=args.input,
+        conf=args.conf,
+        iou=args.iou,
+        save_dir=output_dir,
+        save_crops=not args.no_crops,
+    )
+
+    print(f"\n✅ Processing complete!")
+    print(f"📊 Total Product Items Identified: {results['total_items']}\n")
+    print("📋 Inventory Summary:")
+    print("-" * 55)
+    print(f"{'Product Name':<25} | {'Count':<6} | {'Avg Confidence':<15}")
+    print("-" * 55)
+    for entry in results["inventory_summary"]:
+        print(
+            f"{entry['Product']:<25} | {entry['Count']:<6} | {entry['Avg Confidence']:<15}"
+        )
+    print("-" * 55)
+    print(f"\n📁 Outputs saved to: {output_dir}/")
+    print(f"   🖼️  Annotated Image : {os.path.join(output_dir, 'annotated_result.jpg')}")
+    print(f"   📄 Text Report     : {os.path.join(output_dir, 'predictions.txt')}")
+    print(f"   📊 CSV Report      : {os.path.join(output_dir, 'predictions.csv')}")
+    print(f"   📂 Classified Crops: {os.path.join(output_dir, 'crops')}/")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='argument parser')
-    parser.add_argument('--input', help='Input file path')
-
-    # Parse the command-line arguments
-    args = parser.parse_args()
-
-    model = YOLO(MODEL_PATH)
-
-
-    PATH = Path(args.input).stem
-
-    model.predict(
-        source=args.input,
-        save=True,
-        save_crop=True,
-        conf=0.5,
-        project="data",
-        name=PATH,
-    )
-
-    # Get a list of image file paths using glob
-    list_imgs = glob.glob(f"{DATA_PATH}/knowledge_base/crops/object/**/*.jpg")
-
-    # Create an instance of the Img2VecResnet18 model
-    if model == "dino2":
-        img2vec = Img2VecDino2()
-    else:
-        img2vec = Img2VecResnet18()
-
-    # Create empty lists to store classes and embeddings
-    classes = []
-    embeddings = []
-
-    # Iterate over each image file
-    for filename in list_imgs:
-        # Open the image file
-        I = Image.open(filename)
-
-        # Get the feature vector representation of the image using img2vec.getVec()
-        vec = img2vec.getVec(I)
-
-        # Close the image file
-        I.close()
-
-        # Extract the folder path and name of the image file
-        folder_path = os.path.dirname(filename)
-        folder_name = os.path.basename(folder_path)
-
-        # Append the folder name (class) and feature vector to the lists
-        classes.append(folder_name)
-        embeddings.append(vec)
-
-    # Create a NearestNeighbors model and fit it with the embeddings
-    model_knn = NearestNeighbors(metric='cosine', n_neighbors=N_NEIGHBORS)
-    model_knn.fit(embeddings)
-
-    # Get a list of image file paths using glob
-    list_imgs = glob.glob(f"{DATA_PATH}/{PATH}/crops/object/*.jpg")
-
-    print("Classifying images from ", f"{DATA_PATH}/{PATH}/crops/object/*.jpg")
-    for IMG_DIR in list_imgs:
-
-        # Open the target image file
-        I = Image.open(IMG_DIR)
-
-        # Get the feature vector representation of the target image
-        vec = img2vec.getVec(I)
-
-        # Close the target image file
-        I.close()
-
-        # Find the nearest neighbors and distances to the target image
-        dists, idx = model_knn.kneighbors([vec])
-
-        # Get the class labels of the nearest neighbors
-        brands_nearest_neighbors = [classes[i] for i in list(idx[0])]
-
-        # Count the occurrences of each class label
-        count = Counter(brands_nearest_neighbors)
-
-        # Get the most common class and its count
-        product, n = sorted(count.items(), key=lambda item: item[1])[-1]
-
-
-        crop_name = Path(IMG_DIR).stem
-
-        # move crop image into the corresponding folder
-        if not os.path.exists(f"{DATA_PATH}/{PATH}/crops/{product}"):
-            os.makedirs(f"{DATA_PATH}/{PATH}/crops/{product}")
-        os.replace(IMG_DIR, f"{DATA_PATH}/{PATH}/crops/{product}/{crop_name}.jpg")
-
-        file_path = f"{DATA_PATH}/{PATH}/predictions.txt"
-        with open(file_path, "a", newline="") as file:
-            # writer = csv.writer(file)
-
-            # Write a row to the file
-            row = f"the crop image {crop_name} is predicted as {product} with a {n/N_NEIGHBORS:.0%} probability\n"
-            file.write(row)
-        # write csv file
-        with open(f"{DATA_PATH}/{PATH}/predictions.csv", "a", newline="") as file:
-            file.write(f"{crop_name},{product},{n/N_NEIGHBORS:.0%}\n")
+    main()

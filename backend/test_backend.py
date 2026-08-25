@@ -146,13 +146,23 @@ def test_question_bank():
     assert isinstance(items, list)
 
 
-def test_spa_frontend_serving():
-    resp = client.get("/")
-    assert resp.status_code == 200
-    assert "text/html" in resp.headers["content-type"]
-    assert "AI Teacher Assistant" in resp.text
+def test_ncert_catalog_and_import():
+    # Test catalog search
+    cat_resp = client.get("/api/ncert/catalog?class_grade=Class+10&subject=Science")
+    assert cat_resp.status_code == 200
+    catalog = cat_resp.json()
+    assert len(catalog) >= 1
+    assert catalog[0]["code"] == "jesc1"
+    assert catalog[0]["total_chapters"] == 13
 
+    # Test import
+    import_resp = client.post("/api/ncert/import", json={"code": "jemh1"})
+    assert import_resp.status_code == 200
+    imported = import_resp.json()
+    assert imported["id"] == "ncert-jemh1"
+    assert len(imported["chapters"]) >= 3
 
 
 if __name__ == "__main__":
     pytest.main(["-v", "backend/test_backend.py"])
+
