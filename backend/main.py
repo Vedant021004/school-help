@@ -57,15 +57,17 @@ app.add_middleware(
 FRONTEND_DIST = settings.BASE_DIR.parent / "frontend" / "dist"
 
 @app.get("/")
-async def serve_root():
-    index_file = FRONTEND_DIST / "index.html"
-    if index_file.is_file():
-        return FileResponse(index_file)
+def serve_root():
+    if not settings.IS_SERVERLESS and FRONTEND_DIST.exists():
+        index_file = FRONTEND_DIST / "index.html"
+        if index_file.is_file():
+            return FileResponse(index_file)
     return {
         "status": "healthy",
         "app": settings.APP_NAME,
         "version": settings.APP_VERSION,
-        "message": "AI Teacher Assistant API is running"
+        "llm_provider": settings.LLM_PROVIDER,
+        "groq_active": bool(settings.GROQ_API_KEY)
     }
 
 
@@ -888,10 +890,10 @@ app.include_router(router, prefix="/api")
 app.include_router(router)
 
 # ==========================================
-# 11. FRONTEND STATIC FILE SERVING
+# 11. FRONTEND STATIC FILE SERVING (LOCAL ONLY)
 # ==========================================
 
-if FRONTEND_DIST.exists():
+if not settings.IS_SERVERLESS and FRONTEND_DIST.exists():
     if (FRONTEND_DIST / "assets").exists():
         app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="static_assets")
 

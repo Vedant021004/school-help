@@ -4,10 +4,10 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api"
+      "destination": "/api/index.py"
     },
     {
-      "source": "/((?!assets/|favicon.ico).*)",
+      "source": "/((?!assets/).*)",
       "destination": "/index.html"
     }
   ]
