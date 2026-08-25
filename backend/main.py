@@ -201,16 +201,27 @@ def delete_book(book_id: str):
 # 2.5 NCERT TEXTBOOK DIRECTORY & IMPORTER API
 # ==========================================
 
+@app.get("/api/ncert/meta")
+def get_ncert_meta_info():
+    """
+    Returns unique classes, subjects per class, media types, and count from official NCERT directory.
+    """
+    from backend.ncert_service import get_ncert_metadata
+    return get_ncert_metadata()
+
+
 @app.get("/api/ncert/catalog")
 def get_ncert_catalog(
     query: Optional[str] = None,
     class_grade: Optional[str] = None,
-    subject: Optional[str] = None
+    subject: Optional[str] = None,
+    medium: Optional[str] = None,
+    limit: Optional[int] = 120
 ):
     """
-    Search and browse official NCERT textbooks directory (Class 1 to 12).
+    Search and browse official NCERT textbooks directory (Class 1 to 12 - 1,122+ books).
     """
-    return search_ncert_catalog(query=query, class_grade=class_grade, subject=subject)
+    return search_ncert_catalog(query=query, class_grade=class_grade, subject=subject, medium=medium, limit=limit)
 
 
 @app.post("/api/ncert/import", response_model=Book)

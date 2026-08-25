@@ -2,11 +2,14 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   BookOpen, Plus, Search, Trash2, RefreshCw, Sparkles, MessageSquare, 
   Layers, FileText, CheckCircle2, ChevronRight, X, UploadCloud, Eye, Tag,
-  Globe, Download, Check, ExternalLink, Bookmark, Filter, BookMarked
+  Globe, Download, Check, ExternalLink, Bookmark, Filter, BookMarked, Languages
 } from 'lucide-react';
-import { fetchBooks, uploadBook, deleteBook, reindexBook, fetchNcertCatalog, importNcertBook } from '../api';
+import { 
+  fetchBooks, uploadBook, deleteBook, reindexBook, 
+  fetchNcertCatalog, fetchNcertMeta, importNcertBook 
+} from '../api';
 
-const NCERT_CLASSES = [
+const DEFAULT_NCERT_CLASSES = [
   "All Classes",
   "Class 1",
   "Class 2",
@@ -19,24 +22,8 @@ const NCERT_CLASSES = [
   "Class 9",
   "Class 10",
   "Class 11",
-  "Class 12"
-];
-
-const ALL_NCERT_SUBJECTS = [
-  "All Subjects",
-  "Mathematics",
-  "Science",
-  "Social Science",
-  "Environmental Studies",
-  "English",
-  "Hindi",
-  "Physics",
-  "Chemistry",
-  "Biology",
-  "Computer Science",
-  "Economics",
-  "Accountancy",
-  "Political Science"
+  "Class 12",
+  "Class 11 & 12 Combined"
 ];
 
 export default function BookLibrary({ onNavigate, onSelectBookForChat, onSelectBookForPaper }) {
@@ -46,12 +33,14 @@ export default function BookLibrary({ onNavigate, onSelectBookForChat, onSelectB
   const [searchQuery, setSearchQuery] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('All');
   
-  // NCERT Catalog state
+  // NCERT Portal state
+  const [ncertMeta, setNcertMeta] = useState(null);
   const [ncertCatalog, setNcertCatalog] = useState([]);
   const [ncertLoading, setNcertLoading] = useState(false);
   const [ncertSearchQuery, setNcertSearchQuery] = useState('');
   const [ncertClassFilter, setNcertClassFilter] = useState('All Classes');
   const [ncertSubjectFilter, setNcertSubjectFilter] = useState('All Subjects');
+  const [ncertMediumFilter, setNcertMediumFilter] = useState('All Media');
   const [ncertBookTitleFilter, setNcertBookTitleFilter] = useState('All Books');
   const [importingCode, setImportingCode] = useState(null);
   const [previewNcertBook, setPreviewNcertBook] = useState(null);
@@ -75,11 +64,12 @@ export default function BookLibrary({ onNavigate, onSelectBookForChat, onSelectB
 
   useEffect(() => {
     loadBooks();
+    loadMeta();
   }, []);
 
   useEffect(() => {
     loadNcertCatalog();
-  }, [ncertClassFilter, ncertSubjectFilter, ncertSearchQuery]);
+  }, [ncertClassFilter, ncertSubjectFilter, ncertMediumFilter, ncertSearchQuery]);
 
   const loadBooks = async () => {
     try {
@@ -93,6 +83,15 @@ export default function BookLibrary({ onNavigate, onSelectBookForChat, onSelectB
     }
   };
 
+  const loadMeta = async () => {
+    try {
+      const meta = await fetchNcertMeta();
+      setNcertMeta(meta);
+    } catch (err) {
+      console.error('Failed to load NCERT meta:', err);
+    }
+  };
+
   const loadNcertCatalog = async () => {
     try {
       setNcertLoading(true);
@@ -100,6 +99,8 @@ export default function BookLibrary({ onNavigate, onSelectBookForChat, onSelectB
         query: ncertSearchQuery || undefined,
         class_grade: ncertClassFilter !== 'All Classes' ? ncertClassFilter : undefined,
         subject: ncertSubjectFilter !== 'All Subjects' ? ncertSubjectFilter : undefined,
+        medium: ncertMediumFilter !== 'All Media' ? ncertMediumFilter : undefined,
+        limit: 150
       });
       setNcertCatalog(data);
     } catch (err) {
@@ -111,16 +112,19 @@ export default function BookLibrary({ onNavigate, onSelectBookForChat, onSelectB
 
   // Compute available subjects for the currently selected class
   const dynamicSubjects = useMemo(() => {
+    if (!ncertMeta) return ['All Subjects'];
     if (ncertClassFilter === 'All Classes') {
-      return ALL_NCERT_SUBJECTS;
+      return ['All Subjects', ...ncertMeta.all_subjects];
     }
-    const subjectsInClass = new Set(
-      ncertCatalog
-        .filter(b => b.class_grade.toLowerCase() === ncertClassFilter.toLowerCase())
-        .map(b => b.subject)
-    );
-    return ['All Subjects', ...Array.from(subjectsInClass)];
-  }, [ncertClassFilter, ncertCatalog]);
+    const subjs = ncertMeta.subjects_by_class[ncertClassFilter] || [];
+    return ['All Subjects', ...subjs];
+  }, [ncertClassFilter, ncertMeta]);
+
+  // Compute available media
+  const dynamicMedia = useMemo(() => {
+    if (!ncertMeta) return ['All Media', 'English', 'Hindi', 'Urdu', 'Sanskrit'];
+    return ['All Media', ...ncertMeta.media];
+  }, [ncertMeta]);
 
   // Compute available book titles for cascading selector
   const dynamicBookTitles = useMemo(() => {
@@ -131,8 +135,11 @@ export default function BookLibrary({ onNavigate, onSelectBookForChat, onSelectB
     if (ncertSubjectFilter !== 'All Subjects') {
       list = list.filter(b => b.subject.toLowerCase() === ncertSubjectFilter.toLowerCase());
     }
+    if (ncertMediumFilter !== 'All Media') {
+      list = list.filter(b => (b.medium || '').toLowerCase() === ncertMediumFilter.toLowerCase());
+    }
     return ['All Books', ...list.map(b => b.title)];
-  }, [ncertClassFilter, ncertSubjectFilter, ncertCatalog]);
+  }, [ncertClassFilter, ncertSubjectFilter, ncertMediumFilter, ncertCatalog]);
 
   // Filtered NCERT items based on book title selector
   const displayedNcertCatalog = useMemo(() => {
@@ -241,7 +248,7 @@ export default function BookLibrary({ onNavigate, onSelectBookForChat, onSelectB
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900">Textbook Library & NCERT Hub</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Complete NCERT Curriculum (Classes 1–12) with official cascading selectors matching <strong>ncert.nic.in</strong>.
+            Complete official directory of <strong>1,120+ NCERT textbooks</strong> across <strong>Classes 1 to 12</strong> matching <strong>ncert.nic.in</strong>.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -257,7 +264,7 @@ export default function BookLibrary({ onNavigate, onSelectBookForChat, onSelectB
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold shadow-md transition"
           >
             <Globe className="w-4 h-4" />
-            NCERT Online Portal
+            NCERT Official Portal ({ncertMeta?.total_books || '1,122'} Books)
           </button>
         </div>
       </div>
@@ -284,7 +291,7 @@ export default function BookLibrary({ onNavigate, onSelectBookForChat, onSelectB
           }`}
         >
           <Globe className="w-4 h-4 text-indigo-600" />
-          🏛️ NCERT Official Portal (Class 1 to 12)
+          🏛️ NCERT Official Directory ({ncertMeta?.total_books || '1,122'} Books • Classes 1–12)
         </button>
       </div>
 
@@ -327,7 +334,7 @@ export default function BookLibrary({ onNavigate, onSelectBookForChat, onSelectB
               <BookOpen className="w-12 h-12 text-slate-300 mx-auto" />
               <h3 className="text-lg font-bold text-slate-700">No textbooks in your personal library</h3>
               <p className="text-sm text-slate-500 max-w-md mx-auto">
-                Explore the official NCERT catalog across Classes 1–12 or upload your own PDF textbook.
+                Explore the official 1,120+ NCERT catalog across Classes 1–12 or upload your own PDF textbook.
               </p>
               <div className="flex justify-center gap-3">
                 <button
@@ -423,22 +430,27 @@ export default function BookLibrary({ onNavigate, onSelectBookForChat, onSelectB
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 2: NCERT OFFICIAL PORTAL (Class 1 to 12)                               */}
+      {/* TAB 2: NCERT OFFICIAL PORTAL (Class 1 to 12 - 1,120+ Books)               */}
       {/* ========================================================================= */}
       {activeTab === 'ncert-catalog' && (
         <div className="space-y-6">
           {/* NCERT Direct Cascading Selector matching ncert.nic.in/textbook.php */}
-          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-indigo-900 p-6 sm:p-8 rounded-2xl text-white shadow-xl space-y-6 border border-indigo-800/40">
+          <div className="bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-900 p-6 sm:p-8 rounded-2xl text-white shadow-xl space-y-6 border border-indigo-800/40">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-300 bg-indigo-900/80 px-3 py-1 rounded-full border border-indigo-700/60">
-                  Official NCERT Portal Directory (ncert.nic.in)
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-indigo-300 bg-indigo-900/80 px-3 py-1 rounded-full border border-indigo-700/60">
+                    Official NCERT Portal Directory (ncert.nic.in)
+                  </span>
+                  <span className="text-[10px] font-bold text-amber-300 bg-amber-950/60 px-2.5 py-1 rounded-full border border-amber-600/40">
+                    {ncertMeta?.total_books || '1,122'} Total Textbooks
+                  </span>
+                </div>
                 <h2 className="text-xl sm:text-2xl font-black text-white">
                   National Council of Educational Research and Training
                 </h2>
                 <p className="text-xs text-indigo-200/90">
-                  Select Class (1 to 12), Subject, and Book Title to fetch and index official NCERT curriculum textbooks.
+                  Select Class (Classes 1–12), Subject, Medium, and Book Title or use the live search bar below to fetch and index any NCERT book.
                 </p>
               </div>
               <a
@@ -451,8 +463,8 @@ export default function BookLibrary({ onNavigate, onSelectBookForChat, onSelectB
               </a>
             </div>
 
-            {/* Official 3-Tier Cascading Dropdown Form */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
+            {/* Official 4-Tier Cascading Dropdown Form */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 pt-2">
               {/* 1. Select Class */}
               <div className="space-y-1.5">
                 <label className="block text-[11px] font-extrabold uppercase tracking-wider text-indigo-200">
@@ -465,9 +477,11 @@ export default function BookLibrary({ onNavigate, onSelectBookForChat, onSelectB
                     setNcertSubjectFilter('All Subjects');
                     setNcertBookTitleFilter('All Books');
                   }}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white text-slate-900 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-amber-400 shadow-sm"
+                  className="w-full px-3 py-2.5 rounded-xl bg-white text-slate-900 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-amber-400 shadow-sm"
                 >
-                  {NCERT_CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
+                  {(ncertMeta?.classes ? ['All Classes', ...ncertMeta.classes] : DEFAULT_NCERT_CLASSES).map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
                 </select>
               </div>
 
@@ -482,30 +496,47 @@ export default function BookLibrary({ onNavigate, onSelectBookForChat, onSelectB
                     setNcertSubjectFilter(e.target.value);
                     setNcertBookTitleFilter('All Books');
                   }}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white text-slate-900 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-amber-400 shadow-sm"
+                  className="w-full px-3 py-2.5 rounded-xl bg-white text-slate-900 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-amber-400 shadow-sm"
                 >
                   {dynamicSubjects.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
 
-              {/* 3. Select Book Title */}
+              {/* 3. Select Medium */}
               <div className="space-y-1.5">
                 <label className="block text-[11px] font-extrabold uppercase tracking-wider text-indigo-200">
-                  3. Select Book Title
+                  3. Medium
+                </label>
+                <select
+                  value={ncertMediumFilter}
+                  onChange={(e) => {
+                    setNcertMediumFilter(e.target.value);
+                    setNcertBookTitleFilter('All Books');
+                  }}
+                  className="w-full px-3 py-2.5 rounded-xl bg-white text-slate-900 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-amber-400 shadow-sm"
+                >
+                  {dynamicMedia.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
+
+              {/* 4. Select Book Title */}
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-extrabold uppercase tracking-wider text-indigo-200">
+                  4. Book Title
                 </label>
                 <select
                   value={ncertBookTitleFilter}
                   onChange={(e) => setNcertBookTitleFilter(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white text-slate-900 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-amber-400 shadow-sm"
+                  className="w-full px-3 py-2.5 rounded-xl bg-white text-slate-900 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-amber-400 shadow-sm"
                 >
                   {dynamicBookTitles.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
 
-              {/* 4. Live Search Bar */}
-              <div className="space-y-1.5">
+              {/* 5. Live Search Bar */}
+              <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
                 <label className="block text-[11px] font-extrabold uppercase tracking-wider text-indigo-200">
-                  4. Search Topic / Chapter
+                  5. Search Anything
                 </label>
                 <div className="relative">
                   <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
@@ -513,7 +544,7 @@ export default function BookLibrary({ onNavigate, onSelectBookForChat, onSelectB
                     type="text"
                     value={ncertSearchQuery}
                     onChange={(e) => setNcertSearchQuery(e.target.value)}
-                    placeholder="e.g. Quadratic, Light, Motion..."
+                    placeholder="Search book, topic, code..."
                     className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white text-slate-900 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-amber-400 shadow-sm"
                   />
                 </div>
@@ -525,19 +556,21 @@ export default function BookLibrary({ onNavigate, onSelectBookForChat, onSelectB
               <span className="font-semibold">
                 Showing <strong>{displayedNcertCatalog.length}</strong> official textbooks
                 {ncertClassFilter !== 'All Classes' && ` for ${ncertClassFilter}`}
-                {ncertSubjectFilter !== 'All Subjects' && ` (${ncertSubjectFilter})`}
+                {ncertSubjectFilter !== 'All Subjects' && ` • ${ncertSubjectFilter}`}
+                {ncertMediumFilter !== 'All Media' && ` • ${ncertMediumFilter} Medium`}
               </span>
-              {(ncertClassFilter !== 'All Classes' || ncertSubjectFilter !== 'All Subjects' || ncertBookTitleFilter !== 'All Books' || ncertSearchQuery) && (
+              {(ncertClassFilter !== 'All Classes' || ncertSubjectFilter !== 'All Subjects' || ncertMediumFilter !== 'All Media' || ncertBookTitleFilter !== 'All Books' || ncertSearchQuery) && (
                 <button
                   onClick={() => {
                     setNcertClassFilter('All Classes');
                     setNcertSubjectFilter('All Subjects');
+                    setNcertMediumFilter('All Media');
                     setNcertBookTitleFilter('All Books');
                     setNcertSearchQuery('');
                   }}
                   className="text-amber-300 hover:text-amber-200 font-bold underline text-xs"
                 >
-                  Reset All Filters
+                  Reset All Filters (Show All 1,122 Books)
                 </button>
               )}
             </div>
@@ -552,17 +585,18 @@ export default function BookLibrary({ onNavigate, onSelectBookForChat, onSelectB
             <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300 space-y-3">
               <BookOpen className="w-12 h-12 text-slate-300 mx-auto" />
               <h3 className="text-lg font-bold text-slate-700">No NCERT textbooks matched your selection</h3>
-              <p className="text-xs text-slate-500">Try resetting the Class or Subject filter above.</p>
+              <p className="text-xs text-slate-500">Try adjusting or resetting your search filters above.</p>
               <button
                 onClick={() => {
                   setNcertClassFilter('All Classes');
                   setNcertSubjectFilter('All Subjects');
+                  setNcertMediumFilter('All Media');
                   setNcertBookTitleFilter('All Books');
                   setNcertSearchQuery('');
                 }}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold shadow-md"
               >
-                Show All Classes 1 to 12
+                Reset & Show All 1,122 Books
               </button>
             </div>
           ) : (
@@ -581,8 +615,8 @@ export default function BookLibrary({ onNavigate, onSelectBookForChat, onSelectB
                             <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700">
                               {item.class_grade}
                             </span>
-                            <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
-                              {item.medium} Medium
+                            <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
+                              {item.medium || 'English'} Medium
                             </span>
                           </div>
                           <h4 className="text-lg font-extrabold text-slate-900 leading-snug pt-1">
@@ -596,7 +630,7 @@ export default function BookLibrary({ onNavigate, onSelectBookForChat, onSelectB
 
                       <div className="p-3 bg-slate-50 rounded-xl space-y-1.5 border border-slate-100 text-xs">
                         <div className="flex items-center justify-between text-slate-600 font-medium">
-                          <span>Total Curriculum Chapters:</span>
+                          <span>Official Curriculum Chapters:</span>
                           <span className="font-extrabold text-slate-900">{item.total_chapters} Chapters</span>
                         </div>
                         <button

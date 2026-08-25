@@ -1,7 +1,7 @@
 """
 NCERT Textbook Catalog & Direct Downloader Service.
 Fetches, indexes, and imports official NCERT curriculum textbooks directly into the application.
-Supports all Classes 1 to 12 and full official subject catalog.
+Supports all Classes 1 to 12 and full official subject catalog (1,122+ textbooks).
 """
 
 import os
@@ -22,32 +22,35 @@ from backend.ncert_catalog_data import FULL_NCERT_CATALOG
 NCERT_CATALOG: List[Dict[str, Any]] = FULL_NCERT_CATALOG
 
 
-def get_all_ncert_classes() -> List[str]:
-    """Returns unique list of all available NCERT classes."""
-    classes = []
-    for num in range(1, 13):
-        classes.append(f"Class {num}")
-    return classes
-
-
-def get_subjects_for_class(class_grade: Optional[str] = None) -> List[str]:
-    """Returns list of subjects available for the specified class (or all classes)."""
-    if not class_grade or class_grade == "All Classes":
-        return sorted(list(set(b["subject"] for b in NCERT_CATALOG)))
+def get_ncert_metadata() -> Dict[str, Any]:
+    """Returns unique classes, subjects per class, media, and total count."""
+    classes = [f"Class {i}" for i in range(1, 13)] + ["Class 11 & 12 Combined"]
     
-    subjects = list(set(
-        b["subject"] for b in NCERT_CATALOG 
-        if b["class_grade"].lower() == class_grade.lower()
-    ))
-    return sorted(subjects)
+    subjects_by_class = {}
+    for c in classes:
+        subjs = sorted(list(set(b["subject"] for b in NCERT_CATALOG if b["class_grade"].lower() == c.lower())))
+        subjects_by_class[c] = subjs
+
+    all_subjects = sorted(list(set(b["subject"] for b in NCERT_CATALOG)))
+    all_media = sorted(list(set(b.get("medium", "English") for b in NCERT_CATALOG)))
+
+    return {
+        "total_books": len(NCERT_CATALOG),
+        "classes": classes,
+        "all_subjects": all_subjects,
+        "subjects_by_class": subjects_by_class,
+        "media": all_media
+    }
 
 
 def search_ncert_catalog(
     query: Optional[str] = None,
     class_grade: Optional[str] = None,
-    subject: Optional[str] = None
+    subject: Optional[str] = None,
+    medium: Optional[str] = None,
+    limit: Optional[int] = 120
 ) -> List[Dict[str, Any]]:
-    """Filters the NCERT catalog based on search query, class, and subject."""
+    """Filters the NCERT catalog based on search query, class, subject, and medium."""
     results = NCERT_CATALOG
 
     if class_grade and class_grade != "All Classes":
@@ -56,6 +59,9 @@ def search_ncert_catalog(
     if subject and subject != "All Subjects":
         results = [b for b in results if b["subject"].lower() == subject.lower()]
 
+    if medium and medium != "All Media":
+        results = [b for b in results if b.get("medium", "").lower() == medium.lower()]
+
     if query and query.strip():
         q = query.strip().lower()
         filtered = []
@@ -63,11 +69,14 @@ def search_ncert_catalog(
             match_title = q in b["title"].lower()
             match_subject = q in b["subject"].lower()
             match_class = q in b["class_grade"].lower()
+            match_code = q in b.get("code", "").lower()
             match_chapter = any(q in ch["title"].lower() for ch in b.get("chapters", []))
-            if match_title or match_subject or match_class or match_chapter:
+            if match_title or match_subject or match_class or match_code or match_chapter:
                 filtered.append(b)
         results = filtered
 
+    if limit and limit > 0:
+        return results[:limit]
     return results
 
 
@@ -106,7 +115,7 @@ def import_ncert_textbook(book_code: str) -> Book:
     chapters_meta: List[Chapter] = []
     current_page_cursor = 1
 
-    # Download first 3 chapters if possible for speed
+    # Download first 3 chapters if available
     num_to_fetch = min(3, catalog_item["total_chapters"])
     for ch_info in catalog_item["chapters"][:num_to_fetch]:
         ch_num = ch_info["num"]

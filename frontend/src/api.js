@@ -187,11 +187,19 @@ export async function fetchSettings() {
   return res.json();
 }
 
+export async function fetchNcertMeta() {
+  const res = await fetch(`${API_BASE}/ncert/meta`);
+  if (!res.ok) throw new Error('Failed to fetch NCERT metadata');
+  return res.json();
+}
+
 export async function fetchNcertCatalog(filters = {}) {
   const params = new URLSearchParams();
   if (filters.query) params.append('query', filters.query);
   if (filters.class_grade) params.append('class_grade', filters.class_grade);
   if (filters.subject) params.append('subject', filters.subject);
+  if (filters.medium) params.append('medium', filters.medium);
+  if (filters.limit) params.append('limit', filters.limit);
 
   const res = await fetch(`${API_BASE}/ncert/catalog?${params.toString()}`);
   if (!res.ok) throw new Error('Failed to fetch NCERT catalog');

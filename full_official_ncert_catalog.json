@@ -1,11 +1,4 @@
-"""
-Complete Official NCERT Textbook Directory for Classes 1 to 12.
-Contains all 1122 official textbooks with official book codes, classes, subjects, and chapter layouts.
-"""
-
-from typing import List, Dict, Any
-
-FULL_NCERT_CATALOG: List[Dict[str, Any]] = [
+[
   {
     "code": "aemr1",
     "title": "Mridang",
@@ -49041,55 +49034,39 @@ FULL_NCERT_CATALOG: List[Dict[str, Any]] = [
     "class_num": 9,
     "subject": "Mathematics",
     "medium": "English",
-    "total_chapters": 12,
+    "total_chapters": 8,
     "chapters": [
       {
         "num": 1,
-        "title": "Number Systems"
+        "title": "Chapter 1"
       },
       {
         "num": 2,
-        "title": "Polynomials"
+        "title": "Chapter 2"
       },
       {
         "num": 3,
-        "title": "Coordinate Geometry"
+        "title": "Chapter 3"
       },
       {
         "num": 4,
-        "title": "Linear Equations in Two Variables"
+        "title": "Chapter 4"
       },
       {
         "num": 5,
-        "title": "Introduction to Euclid's Geometry"
+        "title": "Chapter 5"
       },
       {
         "num": 6,
-        "title": "Lines and Angles"
+        "title": "Chapter 6"
       },
       {
         "num": 7,
-        "title": "Triangles"
+        "title": "Chapter 7"
       },
       {
         "num": 8,
-        "title": "Quadrilaterals"
-      },
-      {
-        "num": 9,
-        "title": "Circles"
-      },
-      {
-        "num": 10,
-        "title": "Heron's Formula"
-      },
-      {
-        "num": 11,
-        "title": "Surface Areas and Volumes"
-      },
-      {
-        "num": 12,
-        "title": "Statistics"
+        "title": "Chapter 8"
       }
     ],
     "cover_color": "from-indigo-600 to-slate-800"
@@ -49145,55 +49122,59 @@ FULL_NCERT_CATALOG: List[Dict[str, Any]] = [
     "class_num": 9,
     "subject": "Science",
     "medium": "English",
-    "total_chapters": 12,
+    "total_chapters": 13,
     "chapters": [
       {
         "num": 1,
-        "title": "Matter in Our Surroundings"
+        "title": "Chapter 1"
       },
       {
         "num": 2,
-        "title": "Is Matter Around Us Pure"
+        "title": "Chapter 2"
       },
       {
         "num": 3,
-        "title": "Atoms and Molecules"
+        "title": "Chapter 3"
       },
       {
         "num": 4,
-        "title": "Structure of the Atom"
+        "title": "Chapter 4"
       },
       {
         "num": 5,
-        "title": "The Fundamental Unit of Life"
+        "title": "Chapter 5"
       },
       {
         "num": 6,
-        "title": "Tissues"
+        "title": "Chapter 6"
       },
       {
         "num": 7,
-        "title": "Motion"
+        "title": "Chapter 7"
       },
       {
         "num": 8,
-        "title": "Force and Laws of Motion"
+        "title": "Chapter 8"
       },
       {
         "num": 9,
-        "title": "Gravitation"
+        "title": "Chapter 9"
       },
       {
         "num": 10,
-        "title": "Work and Energy"
+        "title": "Chapter 10"
       },
       {
         "num": 11,
-        "title": "Sound"
+        "title": "Chapter 11"
       },
       {
         "num": 12,
-        "title": "Improvement in Food Resources"
+        "title": "Chapter 12"
+      },
+      {
+        "num": 13,
+        "title": "Chapter 13"
       }
     ],
     "cover_color": "from-indigo-600 to-slate-800"
@@ -49993,59 +49974,59 @@ FULL_NCERT_CATALOG: List[Dict[str, Any]] = [
     "chapters": [
       {
         "num": 1,
-        "title": "Real Numbers"
+        "title": "Chapter 1"
       },
       {
         "num": 2,
-        "title": "Polynomials"
+        "title": "Chapter 2"
       },
       {
         "num": 3,
-        "title": "Pair of Linear Equations in Two Variables"
+        "title": "Chapter 3"
       },
       {
         "num": 4,
-        "title": "Quadratic Equations"
+        "title": "Chapter 4"
       },
       {
         "num": 5,
-        "title": "Arithmetic Progressions"
+        "title": "Chapter 5"
       },
       {
         "num": 6,
-        "title": "Triangles"
+        "title": "Chapter 6"
       },
       {
         "num": 7,
-        "title": "Coordinate Geometry"
+        "title": "Chapter 7"
       },
       {
         "num": 8,
-        "title": "Introduction to Trigonometry"
+        "title": "Chapter 8"
       },
       {
         "num": 9,
-        "title": "Some Applications of Trigonometry"
+        "title": "Chapter 9"
       },
       {
         "num": 10,
-        "title": "Circles"
+        "title": "Chapter 10"
       },
       {
         "num": 11,
-        "title": "Areas Related to Circles"
+        "title": "Chapter 11"
       },
       {
         "num": 12,
-        "title": "Surface Areas and Volumes"
+        "title": "Chapter 12"
       },
       {
         "num": 13,
-        "title": "Statistics"
+        "title": "Chapter 13"
       },
       {
         "num": 14,
-        "title": "Probability"
+        "title": "Chapter 14"
       }
     ],
     "cover_color": "from-indigo-600 to-slate-800"
@@ -50201,55 +50182,55 @@ FULL_NCERT_CATALOG: List[Dict[str, Any]] = [
     "chapters": [
       {
         "num": 1,
-        "title": "Chemical Reactions and Equations"
+        "title": "Chapter 1"
       },
       {
         "num": 2,
-        "title": "Acids, Bases and Salts"
+        "title": "Chapter 2"
       },
       {
         "num": 3,
-        "title": "Metals and Non-metals"
+        "title": "Chapter 3"
       },
       {
         "num": 4,
-        "title": "Carbon and its Compounds"
+        "title": "Chapter 4"
       },
       {
         "num": 5,
-        "title": "Life Processes"
+        "title": "Chapter 5"
       },
       {
         "num": 6,
-        "title": "Control and Coordination"
+        "title": "Chapter 6"
       },
       {
         "num": 7,
-        "title": "How do Organisms Reproduce?"
+        "title": "Chapter 7"
       },
       {
         "num": 8,
-        "title": "Heredity"
+        "title": "Chapter 8"
       },
       {
         "num": 9,
-        "title": "Light – Reflection and Refraction"
+        "title": "Chapter 9"
       },
       {
         "num": 10,
-        "title": "The Human Eye and the Colourful World"
+        "title": "Chapter 10"
       },
       {
         "num": 11,
-        "title": "Electricity"
+        "title": "Chapter 11"
       },
       {
         "num": 12,
-        "title": "Magnetic Effects of Electric Current"
+        "title": "Chapter 12"
       },
       {
         "num": 13,
-        "title": "Our Environment"
+        "title": "Chapter 13"
       }
     ],
     "cover_color": "from-indigo-600 to-slate-800"
@@ -57161,27 +57142,27 @@ FULL_NCERT_CATALOG: List[Dict[str, Any]] = [
     "chapters": [
       {
         "num": 1,
-        "title": "Relations and Functions"
+        "title": "Chapter 1"
       },
       {
         "num": 2,
-        "title": "Inverse Trigonometric Functions"
+        "title": "Chapter 2"
       },
       {
         "num": 3,
-        "title": "Matrices"
+        "title": "Chapter 3"
       },
       {
         "num": 4,
-        "title": "Determinants"
+        "title": "Chapter 4"
       },
       {
         "num": 5,
-        "title": "Continuity and Differentiability"
+        "title": "Chapter 5"
       },
       {
         "num": 6,
-        "title": "Application of Derivatives"
+        "title": "Chapter 6"
       }
     ],
     "cover_color": "from-indigo-600 to-slate-800"
@@ -57197,31 +57178,31 @@ FULL_NCERT_CATALOG: List[Dict[str, Any]] = [
     "chapters": [
       {
         "num": 1,
-        "title": "Integrals"
+        "title": "Chapter 1"
       },
       {
         "num": 2,
-        "title": "Application of Integrals"
+        "title": "Chapter 2"
       },
       {
         "num": 3,
-        "title": "Differential Equations"
+        "title": "Chapter 3"
       },
       {
         "num": 4,
-        "title": "Vector Algebra"
+        "title": "Chapter 4"
       },
       {
         "num": 5,
-        "title": "Three Dimensional Geometry"
+        "title": "Chapter 5"
       },
       {
         "num": 6,
-        "title": "Linear Programming"
+        "title": "Chapter 6"
       },
       {
         "num": 7,
-        "title": "Probability"
+        "title": "Chapter 7"
       }
     ],
     "cover_color": "from-indigo-600 to-slate-800"
@@ -57389,35 +57370,35 @@ FULL_NCERT_CATALOG: List[Dict[str, Any]] = [
     "chapters": [
       {
         "num": 1,
-        "title": "Electric Charges and Fields"
+        "title": "Chapter 1"
       },
       {
         "num": 2,
-        "title": "Electrostatic Potential and Capacitance"
+        "title": "Chapter 2"
       },
       {
         "num": 3,
-        "title": "Current Electricity"
+        "title": "Chapter 3"
       },
       {
         "num": 4,
-        "title": "Moving Charges and Magnetism"
+        "title": "Chapter 4"
       },
       {
         "num": 5,
-        "title": "Magnetism and Matter"
+        "title": "Chapter 5"
       },
       {
         "num": 6,
-        "title": "Electromagnetic Induction"
+        "title": "Chapter 6"
       },
       {
         "num": 7,
-        "title": "Alternating Current"
+        "title": "Chapter 7"
       },
       {
         "num": 8,
-        "title": "Electromagnetic Waves"
+        "title": "Chapter 8"
       }
     ],
     "cover_color": "from-indigo-600 to-slate-800"
@@ -59329,23 +59310,23 @@ FULL_NCERT_CATALOG: List[Dict[str, Any]] = [
     "chapters": [
       {
         "num": 1,
-        "title": "Solutions"
+        "title": "Chapter 1"
       },
       {
         "num": 2,
-        "title": "Electrochemistry"
+        "title": "Chapter 2"
       },
       {
         "num": 3,
-        "title": "Chemical Kinetics"
+        "title": "Chapter 3"
       },
       {
         "num": 4,
-        "title": "The d- and f-Block Elements"
+        "title": "Chapter 4"
       },
       {
         "num": 5,
-        "title": "Coordination Compounds"
+        "title": "Chapter 5"
       }
     ],
     "cover_color": "from-indigo-600 to-slate-800"

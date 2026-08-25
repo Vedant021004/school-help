@@ -1,0 +1,124 @@
+
+================ FUNCTION change ================
+
+
+document.test.tsubject.options[0].text="..Select Subject......";
+		document.test.tsubject.options[1].text="";
+		document.test.tsubject.options[2].text="";
+		 document.test.tsubject.options[3].text="";
+		 document.test.tsubject.options[4].text="";
+		  document.test.tsubject.options[5].text="";
+		  document.test.tsubject.options[6].text="";
+		  document.test.tsubject.options[7].text="";
+		  document.test.tsubject.options[8].text="";
+		  document.test.tsubject.options[9].text="";	
+		  document.test.tsubject.options[10].text="";
+		 document.test.tsubject.options[11].text="";
+		  document.test.tsubject.options[12].text="";
+		 document.test.tsubject.options[13].text="";
+		 document.test.tsubject.options[14].text="";
+		  document.test.tsubject.options[15].text="";
+		  document.test.tsubject.options[16].text="";
+		  document.test.tsubject.options[17].text="";
+       	  	document.test.tsubject.options[18].text="";
+		  document.test.tsubject.options[19].text="";
+		  document.test.tsubject.options[20].text="";
+		  document.test.tsubject.options[21].text="";
+		  document.test.tsubject.options[22].text="";
+		 document.test.tsubject.options[23].text="";
+		document.test.tsubject.options[24].text="";
+		 document.test.tsubject.options[25].text="";
+		 document.test.tsubject.options[26].text="";
+		document.test.tsubject.options[27].text="";
+		  document.test.tsubject.options[28].text="";
+
+
+
+		 
+		
+		
+		
+		
+		
+	//this function check the classthat you have selected
+	
+	if (document.test.tclass.value==-1)
+	{
+		document.test.tsubject.options[0].text=".....Select Subject.....";
+		document.test.tsubject.options[1].text="";
+		document.test.tsubject.options[2].text="";
+		
+	}
+	else if (document.test.tclass.value==1)// this condition checks which class u have select and you can add subject according to class 1
+	{
+		document.test.tsubject.options[0].text="..Select Subject..";
+		document.test.tsubject.options[1].text="English";
+		document.test.tsubject.options[2].text="Mathematics";
+		document.test.tsubject.options[3].text="Hindi";
+		document.test.tsubject.options[4].text="Urdu";
+		//document.test.tsubject.options[5].text="";
+		
+	}
+		
+	
+	else if (document.test.tclass.value==2)// this condition checks which class u have select and you can add subject according to class 2
+	{
+		document.test.tsubject.options[0].text="..Select Subject..";
+		document.test.tsubject.options[1].text="Mathematics";
+		document.test.tsubject.options[2].text="Hindi";
+		document.test.tsubject.options[3].text="English";
+		document.test.tsubject.options[4].text="Urdu";
+	
+	}	
+else if (document.test.tclass.value==3)// this condition checks which class u have select and you can add subject according to class 3
+	{
+		document.test.tsubject.options[0].text="..Select Subject..";
+		
+		
+		/*document.test.tsubject.options[1].text="Mathematics";
+		document.test.tsubject.options[2].text="Hindi";
+		document.test.tsubject.options[3].text="English"
+		document.test.tsubject.options[4].text="Environmental Studies"
+		document.test.tsubject.options[5].text="Urdu"
+		*/
+		document.test.tsubject.options[1].text="Mathematics";
+		document.test.tsubject.options[2].text="English"
+		document.test.tsubject.options[3].text="Hindi";
+		document.test.tsubject.options[4].text="The World Around Us";
+		document.test.tsubject.options[5].text="Arts";
+		document.test.tsubject.options[6].text="Physical Education and Well Being";
+		document.test.tsubject.options[7].text="Urdu";
+
+	
+	}	
+	else if (document.test.tclass.value==4)// this condition checks which class u have select and you can add subject according to class 4
+	{
+		document.test.tsubject.options[0].text="..Select Subject..";
+		document.test.tsubject.options[1].text="Mathematics";
+		document.test.tsubject.options[2].text="Hindi";
+		document.test.tsubject.options[3].text="English";
+		document.test.tsubject.options[4].text="The World Around Us";
+		document.test.tsubject.options[5].text="Arts";
+		document.test.tsubject.options[6].text="Physical Education and Well Being";
+		document.test.tsubject.options[7].text="Urdu";
+
+	
+	}
+			else if (document.test.tclass.value==5)// this condition checks which class u have select and you can add subject according to class 5
+	{
+		document.test.tsubject.options[0].text="..Select Subject..";
+		document.test.tsubject.options[1].text="Mathematics";
+		document.test.tsubject.options[2].text="Hindi";
+		document.test.tsubject.options[3].text="English";
+		document.test.tsubject.options[4].text="The World Around Us";
+		document.test.tsubject.options[5].text="Arts";
+		document.test.tsubject.options[6].text="Physical Education and Well Being";
+		document.test.tsubject.options[7].text="Urdu";
+		
+	}	
+	else if (document.test.tclass.value==6)// this condition checks which class u have select and you can add subject according to class  6
+	{
+		document.test.tsubject.options[0].text="..Select Subject..";
+		document.test.tsubject.options[1].text="Hindi";
+		document.test.tsubject.options[2].text="English";
+		document.test.tsubject.options
