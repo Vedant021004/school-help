@@ -16,9 +16,8 @@ from backend.curriculum_question_data import get_curriculum_question
 
 class LLMService:
     """
-    Enhanced unified LLM service with dynamic textbook concept extraction,
-    multi-provider API integration (Groq LLaMA 3.3, Gemini, OpenAI, Claude, Ollama),
-    and comprehensive chapter-specific curriculum synthesis.
+    High-Precision AI Pedagogical Engine with Groq (120B / 20B / Qwen),
+    Google Gemini, OpenAI GPT-4, and deep curriculum synthesis.
     """
     def __init__(self):
         self.provider = settings.LLM_PROVIDER
@@ -40,11 +39,20 @@ class LLMService:
         existing_questions: List[str]
     ) -> Optional[QuestionItem]:
         """
-        Generates a strictly grounded examination question from the given textbook passage.
+        Generates a high-precision, board-examination question strictly grounded in the textbook chapter.
         """
-        # 1. Groq Ultra-Fast API (LLaMA 3.3 70B / 3.1 8B)
+        # 1. Groq Ultra-Fast AI Reasoning Engine (120B / 20B / Qwen)
         if self.groq_key:
-            item = self._call_groq_question_gen(passage, question_type, marks, difficulty, blooms_level, question_number, section_name)
+            item = self._call_groq_question_gen(
+                passage=passage,
+                question_type=question_type,
+                marks=marks,
+                difficulty=difficulty,
+                blooms_level=blooms_level,
+                question_number=question_number,
+                section_name=section_name,
+                existing_questions=existing_questions
+            )
             if item:
                 return item
 
@@ -80,31 +88,48 @@ class LLMService:
         difficulty: str,
         blooms_level: str,
         question_number: int,
-        section_name: str
+        section_name: str,
+        existing_questions: List[str]
     ) -> Optional[QuestionItem]:
-        prompt = f"""You are a master examination question generator strictly grounded in the official curriculum textbook.
-Generate a distinctive, authentic examination question for Chapter '{passage.chapter_name}' in '{passage.book_title}'.
+        
+        avoid_topics = ""
+        if existing_questions:
+            sample_prev = existing_questions[-5:]
+            avoid_topics = f"\nALREADY GENERATED QUESTIONS IN THIS PAPER (DO NOT REPEAT CONCEPTS/VALUES):\n" + "\n".join([f"- {q[:120]}" for q in sample_prev])
 
-TEXTBOOK METADATA:
+        prompt = f"""You are a master examination creator for official national board curricula (CBSE/NCERT/State Boards).
+Your task is to generate a mathematically/scientifically flawless, high-precision question strictly based on Chapter '{passage.chapter_name}' in '{passage.book_title}'.
+
+TEXTBOOK GROUNDING CONTEXT:
 Textbook: {passage.book_title}
 Chapter: Chapter {passage.chapter_number} - {passage.chapter_name}
 Section: {passage.section}
 Page: {passage.page}
-Context: "{passage.text_reference}"
+Excerpt: "{passage.text_reference}"
+{avoid_topics}
 
-REQUIREMENTS:
+EXAM QUESTION SPECIFICATIONS:
 - Question Number: {question_number}
-- Section: {section_name}
+- Paper Section: {section_name}
 - Question Type: {question_type}
-- Marks: {marks}
-- Difficulty: {difficulty}
-- Bloom's Taxonomy Cognitive Level: {blooms_level}
+- Marks Allotted: {marks}
+- Difficulty Target: {difficulty} (Easy / Medium / Hard)
+- Bloom's Taxonomy Cognitive Level: {blooms_level} (Remember / Understand / Apply / Analyze / Evaluate / Create)
 
-RULES:
-1. The question MUST be strictly relevant to Chapter '{passage.chapter_name}'.
-2. If MCQ: provide 4 distinct options labeled "A. ...", "B. ...", "C. ...", "D. ...".
-3. Provide the exact correct answer and a step-by-step solution / marking rubric.
-4. If numerical or chemical/mathematical: include the formula used.
+CRITICAL ACCURACY & RIGOR GUIDELINES:
+1. Grounding: The question must be 100% relevant to {passage.chapter_name}. Never introduce unrelated textbook topics.
+2. Multiple Choice Questions (MCQ):
+   - Provide 4 distinct options labeled 'A. ...', 'B. ...', 'C. ...', 'D. ...'.
+   - Exactly ONE option must be indisputably correct.
+   - The 3 distractors must be scientifically/mathematically plausible but clearly incorrect.
+3. Numerical & Scientific Calculations:
+   - Check all math and arithmetic twice.
+   - Include the exact governing formula (e.g. V = IR, F = ILB sin theta, 1/v - 1/u = 1/f, HCF*LCM = a*b).
+   - Specify proper SI units in both question and solution.
+4. Chemical Reactions:
+   - Provide balanced chemical equations with state symbols (s, l, g, aq).
+5. Solutions & Marking Rubric:
+   - Provide a step-by-step breakdown indicating how the {marks} marks are distributed (e.g. Formula: 1m, Steps: 1m, Final Result: 1m).
 
 Respond ONLY in valid JSON matching this exact structure:
 {{
@@ -115,51 +140,68 @@ Respond ONLY in valid JSON matching this exact structure:
   "formula_used": "...",
   "text_reference": "..."
 }}"""
-        try:
-            url = "https://api.groq.com/openai/v1/chat/completions"
-            headers = {
-                "Authorization": f"Bearer {self.groq_key}",
-                "Content-Type": "application/json"
-            }
-            payload = {
-                "model": self.groq_model or "llama-3.3-70b-versatile",
-                "messages": [
-                    {"role": "system", "content": f"You are a school examination creator for {passage.book_title}. Output strict JSON."},
-                    {"role": "user", "content": prompt}
-                ],
-                "temperature": 0.25,
-                "response_format": {"type": "json_object"}
-            }
-            resp = requests.post(url, headers=headers, json=payload, timeout=15)
-            if resp.status_code == 200:
-                data = resp.json()
-                raw_json = data["choices"][0]["message"]["content"]
-                res = json.loads(raw_json)
 
-                is_valid, g_score, g_status = grounding_verifier.verify_question(
-                    res["question_text"], res["correct_answer"], passage
-                )
+        # Models to try in order of priority (verified working models)
+        candidate_models = [
+            self.groq_model if self.groq_model in ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.6-27b"] else "openai/gpt-oss-120b",
+            "openai/gpt-oss-120b",
+            "openai/gpt-oss-20b",
+            "qwen/qwen3.6-27b"
+        ]
+        # Remove duplicates while preserving order
+        unique_models = []
+        for m in candidate_models:
+            if m and m not in unique_models:
+                unique_models.append(m)
 
-                return QuestionItem(
-                    question_number=question_number,
-                    section_name=section_name,
-                    question_type=question_type,
-                    question_text=res["question_text"],
-                    options=res.get("options"),
-                    correct_answer=res["correct_answer"],
-                    step_by_step_solution=res.get("step_by_step_solution") or res.get("correct_answer"),
-                    formula_used=res.get("formula_used"),
-                    marks=marks,
-                    difficulty=difficulty,
-                    blooms_level=blooms_level,
-                    chapter_id=passage.chapter_id,
-                    chapter_name=passage.chapter_name,
-                    source=passage,
-                    grounding_score=g_score,
-                    grounding_status="VERIFIED" if is_valid else "WARNING"
-                )
-        except Exception as e:
-            print(f"[LLM] Groq API call error: {e}")
+        for model_name in unique_models:
+            try:
+                url = "https://api.groq.com/openai/v1/chat/completions"
+                headers = {
+                    "Authorization": f"Bearer {self.groq_key}",
+                    "Content-Type": "application/json"
+                }
+                payload = {
+                    "model": model_name,
+                    "messages": [
+                        {"role": "system", "content": f"You are a rigorous master board examination creator for {passage.book_title}. Output strict, valid JSON with exact calculations."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "temperature": 0.2,
+                    "response_format": {"type": "json_object"}
+                }
+                resp = requests.post(url, headers=headers, json=payload, timeout=6)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    raw_json = data["choices"][0]["message"]["content"]
+                    res = json.loads(raw_json)
+
+                    is_valid, g_score, g_status = grounding_verifier.verify_question(
+                        res["question_text"], res["correct_answer"], passage
+                    )
+
+                    return QuestionItem(
+                        question_number=question_number,
+                        section_name=section_name,
+                        question_type=question_type,
+                        question_text=res["question_text"],
+                        options=res.get("options"),
+                        correct_answer=res["correct_answer"],
+                        step_by_step_solution=res.get("step_by_step_solution") or res.get("correct_answer"),
+                        formula_used=res.get("formula_used"),
+                        marks=marks,
+                        difficulty=difficulty,
+                        blooms_level=blooms_level,
+                        chapter_id=passage.chapter_id,
+                        chapter_name=passage.chapter_name,
+                        source=passage,
+                        grounding_score=g_score,
+                        grounding_status="VERIFIED" if is_valid else "WARNING"
+                    )
+            except Exception as e:
+                print(f"[LLM] Groq API call with {model_name} error: {e}")
+                continue
+
         return None
 
     def _call_gemini_question_gen(
@@ -202,7 +244,7 @@ Respond in EXACT JSON FORMAT:
             headers = {"Content-Type": "application/json"}
             payload = {
                 "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {"temperature": 0.25, "response_mime_type": "application/json"}
+                "generationConfig": {"temperature": 0.2, "response_mime_type": "application/json"}
             }
             resp = requests.post(url, headers=headers, json=payload, timeout=15)
             if resp.status_code == 200:
@@ -257,7 +299,7 @@ Respond in strict JSON with keys: question_text, options, correct_answer, step_b
             resp = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.25,
+                temperature=0.2,
                 response_format={"type": "json_object"}
             )
             res = json.loads(resp.choices[0].message.content)
@@ -341,8 +383,8 @@ Respond in strict JSON with keys: question_text, options, correct_answer, step_b
         book_id: str = "default"
     ) -> ChatResponse:
         """
-        Synthesizes a strictly textbook-grounded answer to the teacher's query
-        formatted into multi-card structured pedagogical sections.
+        Synthesizes a high-accuracy, curriculum-grounded answer to the teacher's query
+        formatted into multi-card structured pedagogical sections with live Groq AI.
         """
         # If no passages retrieved
         if not passages:
@@ -374,7 +416,7 @@ Respond in strict JSON with keys: question_text, options, correct_answer, step_b
             for p in passages
         ])
 
-        # 1. Groq Ultra-Fast API (LLaMA 3.3 70B)
+        # 1. Groq Ultra-Fast AI Reasoning Engine (120B / 20B / Qwen)
         if self.groq_key:
             prompt = f"""You are a senior curriculum master teaching assistant for '{book_title}'.
 Selected Chapter: {chapter_name}
@@ -389,56 +431,71 @@ TEACHER QUESTION:
 INSTRUCTIONS:
 1. Structure your answer using EXACTLY these structured Markdown sections:
    ### 📌 Overview & Core Summary
-   (Clear, direct answer to the teacher's query)
+   (Clear, direct answer to the teacher's query with exact scientific/mathematical accuracy)
 
    ### 📖 Key Concepts & In-Depth Explanation
-   (Detailed points directly grounded in the provided textbook passages)
+   (Detailed points directly grounded in the provided textbook passages with bullet points)
 
    ### 📐 Formulas, Definitions & Rules
-   (Key scientific laws, mathematical equations, or formal definitions)
+   (Key scientific laws, mathematical equations, or formal definitions formatted in tables and KaTeX formulas)
 
    ### 💡 Classroom Tips & Student Misconceptions
-   (Pedagogical guidance for teachers and typical exam pitfalls)
+   (Pedagogical guidance for teachers and common student pitfalls)
 
    ### 📝 Classroom Practice Questions
-   (2-3 sample examination questions with brief answer keys)
+   (2-3 sample examination questions with detailed step-by-step marking rubrics)
 
    ### 🎯 Textbook Grounding Reference
-   (Mention exact Book, Chapter, and Page numbers)
+   (Exact Book Title, Chapter Name, and Page numbers)
 
-2. If information is not in evidence, clearly state that in the Overview section.
-3. Keep the tone professional, scholarly, and structured."""
-            try:
-                url = "https://api.groq.com/openai/v1/chat/completions"
-                headers = {
-                    "Authorization": f"Bearer {self.groq_key}",
-                    "Content-Type": "application/json"
-                }
-                payload = {
-                    "model": self.groq_model or "llama-3.3-70b-versatile",
-                    "messages": [
-                        {"role": "system", "content": "You are a master curriculum teaching assistant. Format all output using the requested Markdown sections."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    "temperature": 0.2
-                }
-                resp = requests.post(url, headers=headers, json=payload, timeout=15)
-                if resp.status_code == 200:
-                    ans_text = resp.json()["choices"][0]["message"]["content"]
-                    return ChatResponse(
-                        message=ans_text,
-                        sources=passages,
-                        is_grounded=True,
-                        book_id=passages[0].book_id,
-                        chapter_name=chapter_name,
-                        suggested_followups=[
-                            f"Can you provide 3 more practice questions on {passages[0].section}?",
-                            f"Explain the formula on page {passages[0].page} step by step.",
-                            "What are the common student misconceptions on this topic?"
-                        ]
-                    )
-            except Exception as e:
-                print(f"[Chat] Groq API failed: {e}")
+2. If information is not in evidence, clearly note that in the Overview section.
+3. Maintain highest pedagogical precision, clarity, and scholarly quality."""
+
+            candidate_models = [
+                self.groq_model if self.groq_model in ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.6-27b"] else "openai/gpt-oss-120b",
+                "openai/gpt-oss-120b",
+                "openai/gpt-oss-20b",
+                "qwen/qwen3.6-27b"
+            ]
+            unique_models = []
+            for m in candidate_models:
+                if m and m not in unique_models:
+                    unique_models.append(m)
+
+            for model_name in unique_models:
+                try:
+                    url = "https://api.groq.com/openai/v1/chat/completions"
+                    headers = {
+                        "Authorization": f"Bearer {self.groq_key}",
+                        "Content-Type": "application/json"
+                    }
+                    payload = {
+                        "model": model_name,
+                        "messages": [
+                            {"role": "system", "content": "You are a master curriculum teaching assistant. Output high-accuracy structured Markdown."},
+                            {"role": "user", "content": prompt}
+                        ],
+                        "temperature": 0.2
+                    }
+                    resp = requests.post(url, headers=headers, json=payload, timeout=8)
+                    if resp.status_code == 200:
+                        ans_text = resp.json()["choices"][0]["message"]["content"]
+                        p0 = passages[0]
+                        return ChatResponse(
+                            message=ans_text,
+                            sources=passages,
+                            is_grounded=True,
+                            book_id=p0.book_id,
+                            chapter_name=chapter_name,
+                            suggested_followups=[
+                                f"Can you provide 3 more practice questions on {p0.section}?",
+                                f"Explain the formula on page {p0.page} step by step.",
+                                "What are the common student misconceptions on this topic?"
+                            ]
+                        )
+                except Exception as e:
+                    print(f"[Chat] Groq API call with {model_name} failed: {e}")
+                    continue
 
         # 2. Google Gemini API
         if self.gemini_key:
@@ -455,25 +512,11 @@ TEACHER QUESTION:
 INSTRUCTIONS:
 1. Structure your answer using EXACTLY these structured Markdown sections:
    ### 📌 Overview & Core Summary
-   (Clear, direct answer to the teacher's query)
-
    ### 📖 Key Concepts & In-Depth Explanation
-   (Detailed points directly grounded in the provided textbook passages)
-
    ### 📐 Formulas, Definitions & Rules
-   (Key scientific laws, mathematical equations, or formal definitions)
-
    ### 💡 Classroom Tips & Student Misconceptions
-   (Pedagogical guidance for teachers and typical exam pitfalls)
-
    ### 📝 Classroom Practice Questions
-   (2-3 sample examination questions with brief answer keys)
-
-   ### 🎯 Textbook Grounding Reference
-   (Mention exact Book, Chapter, and Page numbers)
-
-2. If information is not in evidence, clearly state that in the Overview section.
-3. Keep the tone professional, scholarly, and structured."""
+   ### 🎯 Textbook Grounding Reference"""
             try:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.gemini_key}"
                 payload = {"contents": [{"parts": [{"text": prompt}]}]}

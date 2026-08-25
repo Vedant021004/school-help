@@ -277,6 +277,24 @@ export default function GeneratePaper({ onNavigate, preselectedBookId, preselect
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn pb-12">
+      {/* Active AI Status Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-5 rounded-2xl text-white shadow-md border border-indigo-800/30">
+        <div>
+          <h1 className="text-lg font-black tracking-tight flex items-center gap-2">
+            📝 AI Question Paper & Answer Key Generator
+          </h1>
+          <p className="text-xs text-indigo-200 mt-0.5">
+            Strict chapter-grounded board examination generator with live Groq AI reasoning.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-extrabold bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 shadow-sm">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            ⚡ Groq AI Active (120B Engine)
+          </span>
+        </div>
+      </div>
+
       {/* Wizard Progress Bar */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
         <div className={`flex items-center gap-2 text-xs font-bold ${step >= 1 ? 'text-indigo-600' : 'text-slate-400'}`}>

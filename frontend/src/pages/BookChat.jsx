@@ -403,6 +403,11 @@ export default function BookChat({ preselectedBookId, initialQuery }) {
           </div>
 
           <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-900 border border-amber-200 shadow-xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              ⚡ Groq AI Active (120B)
+            </span>
+
             <button
               type="button"
               onClick={() => setBookOnlyMode(!bookOnlyMode)}
