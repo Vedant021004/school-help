@@ -1,35 +1,21 @@
 [project]
-name = "shelf-product-identifier"
-version = "0.1.0"
-requires-python = ">=3.11,<3.12"
+name = "ai-teacher-assistant"
+version = "1.0.0"
+description = "AI Teacher Assistant - Question Paper Generator & Book Assistant"
+requires-python = ">=3.10"
 dependencies = [
-    "numpy==1.26.3",
-    "scipy==1.16.3",
-    "scikit-learn==1.4.2",
-    "Pillow==11.3.0",
-    "tqdm==4.66.5",
-    "ultralytics==8.0.92",
-    "torch==2.1.0",
-    "torchvision==0.16.0",
-    "torchaudio==2.1.0",
-    "setuptools==70.2.0",
-    "wheel==0.45.1",
-    "pip==25.3",
-    "transformers==4.40.2",
-    "huggingface-hub==0.22.0",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.22.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "requests>=2.31.0",
+    "pymupdf>=1.23.0",
+    "python-docx>=1.1.0",
+    "reportlab>=4.0.0",
+    "httpx>=0.25.0",
+    "anyio>=4.0.0",
 ]
 
-[dependency-groups]
-dev = [
-    "ipykernel>=7.1.0",
-    "ipywidgets>=8.1.8",
-]
-
-[tool.uv.sources]
-torch = { index = "pytorch_cpu" }
-torchvision = { index = "pytorch_cpu" }
-torchaudio = { index = "pytorch_cpu" }
-
-[[tool.uv.index]]
-name = "pytorch_cpu"
-url = "https://download.pytorch.org/whl/cpu"
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
