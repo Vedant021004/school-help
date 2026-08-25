@@ -902,16 +902,18 @@ app.include_router(router, prefix="/api")
 app.include_router(router)
 
 # ==========================================
-# 11. FRONTEND STATIC FILE SERVING
+# 11. FRONTEND STATIC FILE SERVING (LOCAL ONLY)
 # ==========================================
 
-if FRONTEND_DIST.exists():
+if not settings.IS_SERVERLESS and FRONTEND_DIST.exists():
     if (FRONTEND_DIST / "assets").exists():
         app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="static_assets")
 
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
         clean_path = full_path.lstrip("/\\")
+        if clean_path.startswith("api/") or clean_path == "api":
+            raise HTTPException(status_code=404, detail="API route not found")
         file_path = FRONTEND_DIST / clean_path
         if file_path.is_file():
             media_type = None

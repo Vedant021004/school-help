@@ -8,7 +8,7 @@
   "rewrites": [
     {
       "source": "/api/:match*",
-      "destination": "/api/index.py"
+      "destination": "/api"
     },
     {
       "source": "/:match((?!api|assets|favicon\\.ico).*)",
