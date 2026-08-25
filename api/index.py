@@ -1,14 +1,30 @@
 import os
 import sys
 
-# Add project root to sys.path
+# Ensure root directory is in sys.path
 root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if root_dir not in sys.path:
     sys.path.insert(0, root_dir)
 
 os.environ.setdefault("VERCEL", "1")
 
-from backend.main import app
+from backend.main import app as _fastapi_app
 
-# Export app and handler for Vercel Serverless ASGI
+async def app(scope, receive, send):
+    """
+    ASGI entry point for Vercel Serverless Functions.
+    Restores the original requested path from Vercel's x-matched-path / x-forwarded-uri headers.
+    """
+    if scope["type"] == "http":
+        headers = dict(scope.get("headers", []))
+        matched_path = headers.get(b"x-matched-path", b"").decode("utf-8", errors="ignore")
+        forwarded_uri = headers.get(b"x-forwarded-uri", b"").decode("utf-8", errors="ignore")
+
+        if matched_path and matched_path != "/api/index.py" and not matched_path.endswith("index.py"):
+            scope["path"] = matched_path
+        elif forwarded_uri:
+            scope["path"] = forwarded_uri.split("?")[0]
+
+    await _fastapi_app(scope, receive, send)
+
 handler = app
