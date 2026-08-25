@@ -236,7 +236,7 @@ class ChatResponse(BaseModel):
     message: str
     sources: List[QuestionSourceCitation] = Field(default_factory=list)
     is_grounded: bool = True
-    book_id: str
+    book_id: Optional[str] = "global"
     chapter_name: Optional[str] = "All Chapters"
     suggested_followups: List[str] = Field(default_factory=list)
 
