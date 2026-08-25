@@ -136,6 +136,67 @@ NCERT_CATALOG: List[Dict[str, Any]] = [
             {"num": 5, "title": "Consumer Rights"}
         ]
     },
+    {
+        "code": "jeen1",
+        "title": "First Flight (English Literature)",
+        "class_grade": "Class 10",
+        "subject": "English",
+        "medium": "English",
+        "cover_color": "from-sky-500 to-blue-700",
+        "total_chapters": 9,
+        "chapters": [
+            {"num": 1, "title": "A Letter to God"},
+            {"num": 2, "title": "Nelson Mandela: Long Walk to Freedom"},
+            {"num": 3, "title": "Two Stories about Flying"},
+            {"num": 4, "title": "From the Diary of Anne Frank"},
+            {"num": 5, "title": "Glimpses of India"},
+            {"num": 6, "title": "Mijbil the Otter"},
+            {"num": 7, "title": "Madam Rides the Bus"},
+            {"num": 8, "title": "The Sermon at Benares"},
+            {"num": 9, "title": "The Proposal (Play)"}
+        ]
+    },
+    {
+        "code": "jeen2",
+        "title": "Footprints Without Feet (Supplementary Reader)",
+        "class_grade": "Class 10",
+        "subject": "English",
+        "medium": "English",
+        "cover_color": "from-blue-600 to-indigo-800",
+        "total_chapters": 9,
+        "chapters": [
+            {"num": 1, "title": "A Triumph of Surgery"},
+            {"num": 2, "title": "The Thief's Story"},
+            {"num": 3, "title": "The Midnight Visitor"},
+            {"num": 4, "title": "A Question of Trust"},
+            {"num": 5, "title": "Footprints Without Feet"},
+            {"num": 6, "title": "The Making of a Scientist"},
+            {"num": 7, "title": "The Necklace"},
+            {"num": 8, "title": "Bholi"},
+            {"num": 9, "title": "The Book That Saved the Earth"}
+        ]
+    },
+    {
+        "code": "jhid1",
+        "title": "Kshitij – Part II (Hindi Course A)",
+        "class_grade": "Class 10",
+        "subject": "Hindi",
+        "medium": "Hindi",
+        "cover_color": "from-orange-500 to-red-700",
+        "total_chapters": 14,
+        "chapters": [
+            {"num": 1, "title": "Pad (Surdas)"},
+            {"num": 2, "title": "Ram-Lakshman-Parshuram Samvad"},
+            {"num": 3, "title": "Aatmakathya (Jaishankar Prasad)"},
+            {"num": 4, "title": "Utsah and Att Nahi Rahi Hai"},
+            {"num": 5, "title": "Netaji Ka Chashma"},
+            {"num": 6, "title": "Balgobin Bhagat"},
+            {"num": 7, "title": "Lakhnavi Andaz"},
+            {"num": 8, "title": "Ek Kahani Yeh Bhi"},
+            {"num": 9, "title": "Naubatkhane Mein Ibadat"},
+            {"num": 10, "title": "Sanskriti"}
+        ]
+    },
 
     # ==================== CLASS 9 ====================
     {
@@ -182,6 +243,90 @@ NCERT_CATALOG: List[Dict[str, Any]] = [
             {"num": 10, "title": "Heron's Formula"},
             {"num": 11, "title": "Surface Areas and Volumes"},
             {"num": 12, "title": "Statistics"}
+        ]
+    },
+    {
+        "code": "iess1",
+        "title": "India and the Contemporary World – I (History)",
+        "class_grade": "Class 9",
+        "subject": "Social Science",
+        "medium": "English",
+        "cover_color": "from-amber-600 to-amber-800",
+        "total_chapters": 5,
+        "chapters": [
+            {"num": 1, "title": "The French Revolution"},
+            {"num": 2, "title": "Socialism in Europe and the Russian Revolution"},
+            {"num": 3, "title": "Nazism and the Rise of Hitler"},
+            {"num": 4, "title": "Forest Society and Colonialism"},
+            {"num": 5, "title": "Pastoralists in the Modern World"}
+        ]
+    },
+    {
+        "code": "iess2",
+        "title": "Contemporary India – I (Geography)",
+        "class_grade": "Class 9",
+        "subject": "Social Science",
+        "medium": "English",
+        "cover_color": "from-teal-600 to-teal-800",
+        "total_chapters": 6,
+        "chapters": [
+            {"num": 1, "title": "India – Size and Location"},
+            {"num": 2, "title": "Physical Features of India"},
+            {"num": 3, "title": "Drainage"},
+            {"num": 4, "title": "Climate"},
+            {"num": 5, "title": "Natural Vegetation and Wildlife"},
+            {"num": 6, "title": "Population"}
+        ]
+    },
+    {
+        "code": "iess3",
+        "title": "Democratic Politics – I (Political Science)",
+        "class_grade": "Class 9",
+        "subject": "Social Science",
+        "medium": "English",
+        "cover_color": "from-purple-600 to-purple-800",
+        "total_chapters": 5,
+        "chapters": [
+            {"num": 1, "title": "What is Democracy? Why Democracy?"},
+            {"num": 2, "title": "Constitutional Design"},
+            {"num": 3, "title": "Electoral Politics"},
+            {"num": 4, "title": "Working of Institutions"},
+            {"num": 5, "title": "Democratic Rights"}
+        ]
+    },
+    {
+        "code": "iess4",
+        "title": "Economics",
+        "class_grade": "Class 9",
+        "subject": "Social Science",
+        "medium": "English",
+        "cover_color": "from-rose-600 to-rose-800",
+        "total_chapters": 4,
+        "chapters": [
+            {"num": 1, "title": "The Story of Village Palampur"},
+            {"num": 2, "title": "People as Resource"},
+            {"num": 3, "title": "Poverty as a Challenge"},
+            {"num": 4, "title": "Food Security in India"}
+        ]
+    },
+    {
+        "code": "ieen1",
+        "title": "Beehive (English Literature)",
+        "class_grade": "Class 9",
+        "subject": "English",
+        "medium": "English",
+        "cover_color": "from-cyan-600 to-blue-800",
+        "total_chapters": 9,
+        "chapters": [
+            {"num": 1, "title": "The Fun They Had"},
+            {"num": 2, "title": "The Sound of Music"},
+            {"num": 3, "title": "The Little Girl"},
+            {"num": 4, "title": "A Truly Beautiful Mind"},
+            {"num": 5, "title": "The Snake and the Mirror"},
+            {"num": 6, "title": "My Childhood"},
+            {"num": 7, "title": "Reach for the Top"},
+            {"num": 8, "title": "Kathmandu"},
+            {"num": 9, "title": "If I Were You"}
         ]
     },
 
@@ -232,6 +377,60 @@ NCERT_CATALOG: List[Dict[str, Any]] = [
             {"num": 11, "title": "Direct and Inverse Proportions"},
             {"num": 12, "title": "Factorisation"},
             {"num": 13, "title": "Introduction to Graphs"}
+        ]
+    },
+    {
+        "code": "hess1",
+        "title": "Our Pasts – III (History)",
+        "class_grade": "Class 8",
+        "subject": "Social Science",
+        "medium": "English",
+        "cover_color": "from-amber-600 to-yellow-800",
+        "total_chapters": 8,
+        "chapters": [
+            {"num": 1, "title": "How, When and Where"},
+            {"num": 2, "title": "From Trade to Territory"},
+            {"num": 3, "title": "Ruling the Countryside"},
+            {"num": 4, "title": "Tribals, Dikus and the Vision of a Golden Age"},
+            {"num": 5, "title": "When People Rebel (1857 and After)"},
+            {"num": 6, "title": "Civilising the 'Native', Educating the Nation"},
+            {"num": 7, "title": "Women, Caste and Reform"},
+            {"num": 8, "title": "The Making of the National Movement: 1870s–1947"}
+        ]
+    },
+    {
+        "code": "hess2",
+        "title": "Resources and Development (Geography)",
+        "class_grade": "Class 8",
+        "subject": "Social Science",
+        "medium": "English",
+        "cover_color": "from-teal-600 to-green-800",
+        "total_chapters": 5,
+        "chapters": [
+            {"num": 1, "title": "Resources"},
+            {"num": 2, "title": "Land, Soil, Water, Natural Vegetation and Wildlife Resources"},
+            {"num": 3, "title": "Agriculture"},
+            {"num": 4, "title": "Industries"},
+            {"num": 5, "title": "Human Resources"}
+        ]
+    },
+    {
+        "code": "heen1",
+        "title": "Honeydew (English)",
+        "class_grade": "Class 8",
+        "subject": "English",
+        "medium": "English",
+        "cover_color": "from-blue-600 to-cyan-800",
+        "total_chapters": 8,
+        "chapters": [
+            {"num": 1, "title": "The Best Christmas Present in the World"},
+            {"num": 2, "title": "The Tsunami"},
+            {"num": 3, "title": "Glimpses of the Past"},
+            {"num": 4, "title": "Bepin Choudhury's Lapse of Memory"},
+            {"num": 5, "title": "The Summit Within"},
+            {"num": 6, "title": "This is Jody's Fawn"},
+            {"num": 7, "title": "A Visit to Cambridge"},
+            {"num": 8, "title": "A Short Monsoon Diary"}
         ]
     },
 
@@ -301,6 +500,53 @@ NCERT_CATALOG: List[Dict[str, Any]] = [
             {"num": 19, "title": "Chemical Coordination and Integration"}
         ]
     },
+    {
+        "code": "kemh1",
+        "title": "Mathematics",
+        "class_grade": "Class 11",
+        "subject": "Mathematics",
+        "medium": "English",
+        "cover_color": "from-indigo-600 to-blue-800",
+        "total_chapters": 14,
+        "chapters": [
+            {"num": 1, "title": "Sets"},
+            {"num": 2, "title": "Relations and Functions"},
+            {"num": 3, "title": "Trigonometric Functions"},
+            {"num": 4, "title": "Complex Numbers and Quadratic Equations"},
+            {"num": 5, "title": "Linear Inequalities"},
+            {"num": 6, "title": "Permutations and Combinations"},
+            {"num": 7, "title": "Binomial Theorem"},
+            {"num": 8, "title": "Sequences and Series"},
+            {"num": 9, "title": "Straight Lines"},
+            {"num": 10, "title": "Conic Sections"},
+            {"num": 11, "title": "Introduction to Three Dimensional Geometry"},
+            {"num": 12, "title": "Limits and Derivatives"},
+            {"num": 13, "title": "Statistics"},
+            {"num": 14, "title": "Probability"}
+        ]
+    },
+    {
+        "code": "kecs1",
+        "title": "Computer Science (Python)",
+        "class_grade": "Class 11",
+        "subject": "Computer Science",
+        "medium": "English",
+        "cover_color": "from-violet-600 to-purple-800",
+        "total_chapters": 11,
+        "chapters": [
+            {"num": 1, "title": "Computer System Overview"},
+            {"num": 2, "title": "Encoding Schemes and Number System"},
+            {"num": 3, "title": "Emerging Trends in Computing"},
+            {"num": 4, "title": "Introduction to Problem Solving"},
+            {"num": 5, "title": "Getting Started with Python"},
+            {"num": 6, "title": "Flow of Control"},
+            {"num": 7, "title": "Functions"},
+            {"num": 8, "title": "Strings in Python"},
+            {"num": 9, "title": "Lists in Python"},
+            {"num": 10, "title": "Tuples and Dictionaries"},
+            {"num": 11, "title": "Societal Impacts of Technology"}
+        ]
+    },
 
     # ==================== CLASS 12 ====================
     {
@@ -323,6 +569,23 @@ NCERT_CATALOG: List[Dict[str, Any]] = [
         ]
     },
     {
+        "code": "leph2",
+        "title": "Physics Part – II",
+        "class_grade": "Class 12",
+        "subject": "Physics",
+        "medium": "English",
+        "cover_color": "from-blue-600 to-cyan-800",
+        "total_chapters": 6,
+        "chapters": [
+            {"num": 1, "title": "Ray Optics and Optical Instruments"},
+            {"num": 2, "title": "Wave Optics"},
+            {"num": 3, "title": "Dual Nature of Radiation and Matter"},
+            {"num": 4, "title": "Atoms"},
+            {"num": 5, "title": "Nuclei"},
+            {"num": 6, "title": "Semiconductor Electronics: Materials, Devices and Simple Circuits"}
+        ]
+    },
+    {
         "code": "lech1",
         "title": "Chemistry Part – I",
         "class_grade": "Class 12",
@@ -336,6 +599,22 @@ NCERT_CATALOG: List[Dict[str, Any]] = [
             {"num": 3, "title": "Chemical Kinetics"},
             {"num": 4, "title": "The d- and f-Block Elements"},
             {"num": 5, "title": "Coordination Compounds"}
+        ]
+    },
+    {
+        "code": "lech2",
+        "title": "Chemistry Part – II",
+        "class_grade": "Class 12",
+        "subject": "Chemistry",
+        "medium": "English",
+        "cover_color": "from-red-600 to-orange-800",
+        "total_chapters": 5,
+        "chapters": [
+            {"num": 1, "title": "Haloalkanes and Haloarenes"},
+            {"num": 2, "title": "Alcohols, Phenols and Ethers"},
+            {"num": 3, "title": "Aldehydes, Ketones and Carboxylic Acids"},
+            {"num": 4, "title": "Amines"},
+            {"num": 5, "title": "Biomolecules"}
         ]
     },
     {
@@ -377,6 +656,43 @@ NCERT_CATALOG: List[Dict[str, Any]] = [
             {"num": 4, "title": "Determinants"},
             {"num": 5, "title": "Continuity and Differentiability"},
             {"num": 6, "title": "Application of Derivatives"}
+        ]
+    },
+    {
+        "code": "lemh2",
+        "title": "Mathematics Part – II",
+        "class_grade": "Class 12",
+        "subject": "Mathematics",
+        "medium": "English",
+        "cover_color": "from-indigo-600 to-purple-800",
+        "total_chapters": 7,
+        "chapters": [
+            {"num": 1, "title": "Integrals"},
+            {"num": 2, "title": "Application of Integrals"},
+            {"num": 3, "title": "Differential Equations"},
+            {"num": 4, "title": "Vector Algebra"},
+            {"num": 5, "title": "Three Dimensional Geometry"},
+            {"num": 6, "title": "Linear Programming"},
+            {"num": 7, "title": "Probability"}
+        ]
+    },
+    {
+        "code": "lecs1",
+        "title": "Computer Science (Python)",
+        "class_grade": "Class 12",
+        "subject": "Computer Science",
+        "medium": "English",
+        "cover_color": "from-violet-600 to-indigo-900",
+        "total_chapters": 8,
+        "chapters": [
+            {"num": 1, "title": "Python Revision Tour"},
+            {"num": 2, "title": "Functions in Python"},
+            {"num": 3, "title": "File Handling (Text, Binary, CSV)"},
+            {"num": 4, "title": "Data Structures: Stack and Queue"},
+            {"num": 5, "title": "Computer Networks and Web Services"},
+            {"num": 6, "title": "Database Management (MySQL and SQL Commands)"},
+            {"num": 7, "title": "Interface Python with MySQL"},
+            {"num": 8, "title": "Cyber Safety and Society Law Ethics"}
         ]
     }
 ]
@@ -581,4 +897,3 @@ def import_ncert_textbook(book_code: str) -> Book:
     # Persist in SQLite
     db.save_book(book)
     return book
-

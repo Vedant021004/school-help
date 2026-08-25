@@ -20,9 +20,12 @@ const NCERT_SUBJECTS = [
   "Science",
   "Mathematics",
   "Social Science",
+  "English",
+  "Hindi",
   "Physics",
   "Chemistry",
-  "Biology"
+  "Biology",
+  "Computer Science"
 ];
 
 export default function BookLibrary({ onNavigate, onSelectBookForChat, onSelectBookForPaper }) {
