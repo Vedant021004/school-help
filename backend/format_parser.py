@@ -2,8 +2,6 @@ import os
 import re
 import uuid
 from typing import Dict, Any, List, Optional
-import pymupdf
-import docx
 from backend.models import PaperFormat, SectionFormat
 
 
@@ -166,11 +164,13 @@ def extract_format_from_file(file_path: str) -> PaperFormat:
     extracted_text = ""
 
     if ext == ".pdf":
+        import pymupdf
         doc = pymupdf.open(file_path)
         for page in doc:
             extracted_text += page.get_text("text") + "\n"
         doc.close()
     elif ext in [".docx", ".doc"]:
+        import docx
         doc = docx.Document(file_path)
         for p in doc.paragraphs:
             extracted_text += p.text + "\n"
