@@ -306,10 +306,16 @@ def generate_question_paper(req: QuestionPaperGenerationRequest):
     """
     book = db.get_book_by_id(req.book_id)
     if not book:
-        raise HTTPException(status_code=404, detail="Selected textbook not found")
+        code = req.book_id.replace("ncert-", "")
+        if any(b["code"] == code for b in FULL_NCERT_CATALOG):
+            from backend.ncert_service import import_ncert_textbook
+            book = import_ncert_textbook(code)
+        else:
+            raise HTTPException(status_code=404, detail="Selected textbook not found")
 
     if not req.chapter_ids:
-        raise HTTPException(status_code=400, detail="Must select at least one chapter")
+        # If chapters were not specified, select all
+        req.chapter_ids = [c.id for c in book.chapters]
 
     # Get Paper Format
     if req.custom_format:
@@ -680,7 +686,12 @@ def chat_with_book_endpoint(req: ChatRequest):
     """
     book = db.get_book_by_id(req.book_id)
     if not book:
-        raise HTTPException(status_code=404, detail="Book not found")
+        code = req.book_id.replace("ncert-", "")
+        if any(b["code"] == code for b in FULL_NCERT_CATALOG):
+            from backend.ncert_service import import_ncert_textbook
+            book = import_ncert_textbook(code)
+        else:
+            raise HTTPException(status_code=404, detail="Book not found")
 
     chapter_ids = [req.chapter_id] if req.chapter_id else [c.id for c in book.chapters]
     chapter_name = "All Chapters"
