@@ -7,11 +7,11 @@
   },
   "rewrites": [
     {
-      "source": "/api/(.*)",
+      "source": "/api/:match*",
       "destination": "/api/index.py"
     },
     {
-      "source": "/((?!api/|assets/|favicon.ico).*)",
+      "source": "/:match((?!api|assets|favicon\\.ico).*)",
       "destination": "/index.html"
     }
   ]
