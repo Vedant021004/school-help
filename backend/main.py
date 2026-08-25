@@ -695,9 +695,9 @@ def chat_with_book_endpoint(req: ChatRequest):
         query=req.message,
         book_id=req.book_id,
         chapter_ids=chapter_ids,
-        top_k=4
+        top_k=4,
+        allow_fallback=not req.book_only_mode
     )
-
     response = llm_service.chat_with_book(
         book_title=book.title,
         chapter_name=chapter_name,

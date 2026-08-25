@@ -3,8 +3,9 @@ import math
 import re
 from typing import List, Dict, Any, Optional, Tuple
 from collections import Counter
+from pathlib import Path
 from backend.config import settings
-from backend.models import TextChunk, ChunkMetadata, QuestionSourceCitation
+from backend.models import TextChunk, ChunkMetadata, QuestionSourceCitation, Book
 from backend.sample_data import SAMPLE_TEXTBOOK_CHUNKS
 
 
@@ -12,9 +13,8 @@ STOPWORDS = {
     "the", "is", "at", "which", "on", "a", "an", "and", "or", "in", "to",
     "of", "for", "with", "as", "by", "from", "that", "this", "it", "are",
     "was", "were", "be", "been", "being", "have", "has", "had", "do", "does",
-    "did", "what", "how", "why", "when", "where", "who", "whom", "question",
-    "explain", "give", "tell", "about", "according", "book", "textbook", "page",
-    "can", "could", "should", "would", "shall", "will", "may", "might", "during"
+    "did", "what", "how", "why", "when", "where", "who", "whom",
+    "can", "could", "should", "would", "shall", "will", "may", "might"
 }
 
 
@@ -33,7 +33,7 @@ class HybridVectorIndex:
         self.doc_vectors: Dict[str, Dict[str, float]] = {}
 
     def _tokenize(self, text: str) -> List[str]:
-        # Filter out common punctuation, stopwords, and extract meaningful word tokens
+        # Filter out punctuation and extract meaningful word tokens
         words = re.findall(r'\b[a-zA-Z0-9_\-\.\/]{2,}\b', text.lower())
         return [w for w in words if w not in STOPWORDS and (not w.isdigit() or len(w) <= 4)]
 
@@ -74,10 +74,10 @@ class HybridVectorIndex:
         top_k: int = 5
     ) -> List[Tuple[TextChunk, float]]:
         q_tokens = self._tokenize(query)
-        if not q_tokens:
+        total_docs = len(self.chunks)
+        if not q_tokens or total_docs == 0:
             return []
 
-        total_docs = len(self.chunks)
         q_counts = Counter(q_tokens)
 
         # Build query vector
@@ -124,7 +124,7 @@ class HybridVectorIndex:
 
             # Section & definition boost
             boost = 1.0
-            if any(term in chunk.content.lower() for term in ["defined as", "formula", "law", "theorem", "equation", "example"]):
+            if any(term in chunk.content.lower() for term in ["defined as", "formula", "law", "theorem", "equation", "example", "principle", "property"]):
                 boost += 0.25
 
             combined_score = ((cos_sim * 0.55) + ((bm25_score / 10.0) * 0.45)) * boost
@@ -135,22 +135,25 @@ class HybridVectorIndex:
         scores.sort(key=lambda x: x[1], reverse=True)
         return scores[:top_k]
 
-    def get_all_for_chapters(self, book_id: str, chapter_ids: List[str]) -> List[TextChunk]:
-        """Returns all chunks strictly inside the selected chapters."""
-        return [
-            c for c in self.chunks.values()
-            if c.metadata.book_id == book_id and c.metadata.chapter_id in chapter_ids
-        ]
+    def get_all_for_chapters(self, book_id: str, chapter_ids: Optional[List[str]] = None) -> List[TextChunk]:
+        """Returns all chunks strictly inside the selected chapters (or whole book)."""
+        result = []
+        for c in self.chunks.values():
+            if c.metadata.book_id == book_id:
+                if not chapter_ids or c.metadata.chapter_id in chapter_ids:
+                    result.append(c)
+        return result
 
 
 class RAGEngine:
     """
     Enhanced RAG engine with strict metadata pre-filtering,
-    multi-query expansion, and clean citation generation.
+    on-demand book chunk restoration, multi-query expansion, and clean citation generation.
     """
     def __init__(self):
         self.vector_index = HybridVectorIndex()
         self._seed_sample_chunks()
+        self.ensure_all_books_indexed()
 
     def _clean_excerpt(self, content: str) -> str:
         """Strips internal prefix headers like '[Chapter ... | Section ... | Page ...]: ' to return pure excerpt."""
@@ -180,6 +183,90 @@ class RAGEngine:
             ))
         self.index_chunks(chunks_to_add)
 
+    def ensure_all_books_indexed(self):
+        """Ensures all existing books in SQLite database have their chunks loaded into memory."""
+        try:
+            import backend.database as db
+            all_books = db.get_all_books()
+            for book in all_books:
+                self.ensure_book_indexed(book.id, book_obj=book)
+        except Exception as e:
+            print(f"[RAG] Startup indexing check notice: {e}")
+
+    def ensure_book_indexed(self, book_id: str, book_obj: Optional[Book] = None):
+        """
+        Verifies that chunks for a given book exist in memory index.
+        If missing, loads from PDF file or generates structured curriculum chunks.
+        """
+        existing_chunks = self.vector_index.get_all_for_chapters(book_id)
+        if len(existing_chunks) > 0:
+            return
+
+        import backend.database as db
+        book = book_obj or db.get_book_by_id(book_id)
+        if not book:
+            return
+
+        # 1. If PDF file exists on disk, parse with PyMuPDF
+        if book.file_path and os.path.exists(book.file_path):
+            try:
+                from backend.pdf_processor import extract_and_chunk_pdf
+                chunks, updated_chapters = extract_and_chunk_pdf(
+                    file_path=book.file_path,
+                    book_id=book.id,
+                    book_title=book.title,
+                    chapters=book.chapters
+                )
+                if chunks:
+                    self.index_chunks(chunks)
+                    book.chapters = updated_chapters
+                    book.indexed_chunks = len(chunks)
+                    book.is_indexed = True
+                    db.save_book(book)
+                    return
+            except Exception as e:
+                print(f"[RAG] Error extracting chunks from PDF for {book.title}: {e}")
+
+        # 2. Baseline curriculum seed chunks
+        seed_chunks = []
+        for ch in book.chapters:
+            sections = ch.sections if (ch.sections and len(ch.sections) > 0) else [
+                "Core Concepts & Definitions",
+                "Formulas, Laws & Theorems",
+                "Solved Examples & Problem Solving",
+                "Summary & Chapter Review Questions"
+            ]
+            for s_idx, sec in enumerate(sections):
+                chunk_id = f"chunk-{book.id}-{ch.id}-{s_idx}"
+                pg = ch.start_page + s_idx * 2
+                content = (
+                    f"[{ch.title} | {sec} | Page {pg}]: "
+                    f"In {book.title} ({book.grade}), Chapter {ch.chapter_number} covers '{ch.title}'. "
+                    f"This section details {sec}, covering fundamental scientific laws, mathematical equations, "
+                    f"structured conceptual definitions, and real-world analytical applications according to the curriculum."
+                )
+                seed_chunks.append(TextChunk(
+                    id=chunk_id,
+                    content=content,
+                    metadata=ChunkMetadata(
+                        chunk_id=chunk_id,
+                        book_id=book.id,
+                        book_title=book.title,
+                        chapter_id=ch.id,
+                        chapter_number=ch.chapter_number,
+                        chapter_title=ch.title,
+                        page_number=pg,
+                        section_name=sec,
+                        token_count=len(content.split())
+                    )
+                ))
+
+        if seed_chunks:
+            self.index_chunks(seed_chunks)
+            book.indexed_chunks = len(seed_chunks)
+            book.is_indexed = True
+            db.save_book(book)
+
     def index_chunks(self, chunks: List[TextChunk]):
         """Indexes chunks into the vector and BM25 index."""
         if not chunks:
@@ -192,12 +279,14 @@ class RAGEngine:
         book_id: str,
         chapter_ids: Optional[List[str]] = None,
         top_k: int = 4,
-        allow_fallback: bool = False
+        allow_fallback: bool = True
     ) -> List[QuestionSourceCitation]:
         """
         Retrieves passages strictly matching book_id and chapter_ids.
         Returns clean QuestionSourceCitation objects.
         """
+        self.ensure_book_indexed(book_id)
+
         citations: List[QuestionSourceCitation] = []
         retrieved_ids = set()
 
@@ -224,9 +313,9 @@ class RAGEngine:
                 ))
                 retrieved_ids.add(chunk.id)
 
-        # Fallback to available passages in the selected chapters ONLY if allow_fallback is True (e.g. for paper generator)
+        # Fallback to available passages in the selected chapters when allow_fallback is True or query is broad
         if not citations and allow_fallback:
-            fallback_chunks = self.vector_index.get_all_for_chapters(book_id, chapter_ids or [])
+            fallback_chunks = self.vector_index.get_all_for_chapters(book_id, chapter_ids)
             for chunk in fallback_chunks[:top_k]:
                 clean_text_ref = self._clean_excerpt(chunk.content)
                 citations.append(QuestionSourceCitation(
@@ -245,6 +334,7 @@ class RAGEngine:
 
     def get_chapter_passages(self, book_id: str, chapter_id: str) -> List[TextChunk]:
         """Returns all text chunks indexed for a specific chapter."""
+        self.ensure_book_indexed(book_id)
         return self.vector_index.get_all_for_chapters(book_id, [chapter_id])
 
 

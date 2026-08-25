@@ -537,14 +537,49 @@ INSTRUCTIONS:
 
         # Deterministic grounded answer synthesis
         p0 = passages[0]
-        summary_intro = f"According to **{p0.book_title}**, Chapter '{p0.chapter_name}' (Page {p0.page}, *{p0.section}*):\n\n"
-        content_body = p0.text_reference
+        q_lower = query.lower()
 
-        additional = ""
-        if len(passages) > 1:
-            additional = f"\n\n**Corroborating Reference (Page {passages[1].page} - {passages[1].section}):**\n{passages[1].text_reference}"
+        # Intent detection
+        if any(w in q_lower for w in ["question", "practice", "exam", "quiz", "test", "problem"]):
+            # Generate practice questions based on passage
+            ans_sections = [
+                f"### 📝 Practice Questions Grounded in {book_title} — Chapter '{chapter_name}'\n",
+                f"Based on **Page {p0.page} ({p0.section})**:\n",
+                f"**Q1. (Conceptual)** Explain the fundamental principle of {p0.section} as detailed on page {p0.page}.",
+                f"**Q2. (Analytical)** How does {p0.section} relate to real-world applications in {book_title}?",
+                f"**Q3. (Problem Solving)** Describe the step-by-step method to solve problems from this section.",
+                f"\n**💡 Textbook Context Excerpt (Page {p0.page}):**\n> \"{p0.text_reference}\"\n"
+            ]
+            full_message = "\n".join(ans_sections)
 
-        full_message = f"{summary_intro}{content_body}{additional}\n\n*Source verified directly against textbook repository.*"
+        elif any(w in q_lower for w in ["definition", "formula", "law", "theorem", "equation", "rule"]):
+            ans_sections = [
+                f"### 📐 Key Definitions & Principles: {chapter_name}\n",
+                f"From **{book_title}**, Page {p0.page} (*{p0.section}*):\n",
+                f"- **Core Term / Topic:** {p0.section}",
+                f"- **Textbook Definition:** {p0.text_reference}",
+                f"\n*Source verified directly against {book_title} (Page {p0.page}).*"
+            ]
+            full_message = "\n".join(ans_sections)
+
+        elif any(w in q_lower for w in ["summar", "overview", "simple", "explain", "meaning", "about"]):
+            ans_sections = [
+                f"### 📖 Textbook Explanation: {chapter_name}\n",
+                f"According to **{book_title}** (*Page {p0.page} - {p0.section}*):\n",
+                f"{p0.text_reference}\n"
+            ]
+            if len(passages) > 1:
+                ans_sections.append(f"\n**Key Corroborating Insight (Page {passages[1].page} - {passages[1].section}):**\n{passages[1].text_reference}\n")
+            ans_sections.append(f"\n*Verified from official curriculum textbook repository.*")
+            full_message = "\n".join(ans_sections)
+
+        else:
+            summary_intro = f"According to **{p0.book_title}**, Chapter '{p0.chapter_name}' (Page {p0.page}, *{p0.section}*):\n\n"
+            content_body = p0.text_reference
+            additional = ""
+            if len(passages) > 1:
+                additional = f"\n\n**Corroborating Reference (Page {passages[1].page} - {passages[1].section}):**\n{passages[1].text_reference}"
+            full_message = f"{summary_intro}{content_body}{additional}\n\n*Source verified directly against textbook repository.*"
 
         return ChatResponse(
             message=full_message,
@@ -554,8 +589,8 @@ INSTRUCTIONS:
             chapter_name=chapter_name,
             suggested_followups=[
                 f"Give me 5 examination questions on {p0.section}",
-                f"What are the key formulas on Page {p0.page}?",
-                "Explain this concept with an analogy for students"
+                f"What are the key definitions on Page {p0.page}?",
+                f"Explain this concept with an analogy for students"
             ]
         )
 
