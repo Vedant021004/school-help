@@ -3,7 +3,7 @@ import json
 import uuid
 import shutil
 from typing import List, Optional, Dict, Any
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks, Depends
+from fastapi import FastAPI, APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -31,6 +31,8 @@ from backend.ncert_service import search_ncert_catalog, import_ncert_textbook
 from backend.ncert_catalog_data import FULL_NCERT_CATALOG
 # Initialize database schema and seeds
 db.init_db()
+
+router = APIRouter()
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -71,7 +73,7 @@ async def serve_root():
 # 1. DASHBOARD & STATS API
 # ==========================================
 
-@app.get("/api/health")
+@router.get("/health")
 def health_check():
     return {
         "status": "healthy",
@@ -83,7 +85,7 @@ def health_check():
     }
 
 
-@app.get("/api/stats")
+@router.get("/stats")
 def get_dashboard_stats():
     books = db.get_all_books()
     papers = db.get_all_papers()
@@ -118,12 +120,12 @@ def get_dashboard_stats():
 # 2. BOOK LIBRARY API
 # ==========================================
 
-@app.get("/api/books", response_model=List[Book])
+@router.get("/books", response_model=List[Book])
 def list_books():
     return db.get_all_books()
 
 
-@app.get("/api/books/{book_id}", response_model=Book)
+@router.get("/books/{book_id}", response_model=Book)
 def get_book(book_id: str):
     book = db.get_book_by_id(book_id)
     if not book:
@@ -131,7 +133,7 @@ def get_book(book_id: str):
     return book
 
 
-@app.post("/api/books")
+@router.post("/books")
 async def upload_book(
     file: UploadFile = File(...),
     title: str = Form(...),
@@ -201,7 +203,7 @@ async def upload_book(
     return book
 
 
-@app.post("/api/books/{book_id}/reindex")
+@router.post("/books/{book_id}/reindex")
 def reindex_book(book_id: str):
     book = db.get_book_by_id(book_id)
     if not book:
@@ -223,7 +225,7 @@ def reindex_book(book_id: str):
     return {"message": "Book re-indexed successfully", "chunks_indexed": book.indexed_chunks}
 
 
-@app.delete("/api/books/{book_id}")
+@router.delete("/books/{book_id}")
 def delete_book(book_id: str):
     success = db.delete_book(book_id)
     return {"success": success}
@@ -233,7 +235,7 @@ def delete_book(book_id: str):
 # 2.5 NCERT TEXTBOOK DIRECTORY & IMPORTER API
 # ==========================================
 
-@app.get("/api/ncert/meta")
+@router.get("/ncert/meta")
 def get_ncert_meta_info():
     """
     Returns unique classes, subjects per class, media types, and count from official NCERT directory.
@@ -242,7 +244,7 @@ def get_ncert_meta_info():
     return get_ncert_metadata()
 
 
-@app.get("/api/ncert/catalog")
+@router.get("/ncert/catalog")
 def get_ncert_catalog(
     query: Optional[str] = None,
     class_grade: Optional[str] = None,
@@ -256,7 +258,7 @@ def get_ncert_catalog(
     return search_ncert_catalog(query=query, class_grade=class_grade, subject=subject, medium=medium, limit=limit)
 
 
-@app.post("/api/ncert/import", response_model=Book)
+@router.post("/ncert/import", response_model=Book)
 def import_ncert_book(payload: Dict[str, str]):
     """
     Directly imports, parses, and indexes an official NCERT textbook by its code (e.g. 'jesc1', 'jemh1').
@@ -276,12 +278,12 @@ def import_ncert_book(payload: Dict[str, str]):
 # 3. PAPER FORMATS API
 # ==========================================
 
-@app.get("/api/formats", response_model=List[PaperFormat])
+@router.get("/formats", response_model=List[PaperFormat])
 def list_formats():
     return db.get_all_formats()
 
 
-@app.get("/api/formats/{format_id}", response_model=PaperFormat)
+@router.get("/formats/{format_id}", response_model=PaperFormat)
 def get_format(format_id: str):
     fmt = db.get_format_by_id(format_id)
     if not fmt:
@@ -289,7 +291,7 @@ def get_format(format_id: str):
     return fmt
 
 
-@app.post("/api/formats", response_model=PaperFormat)
+@router.post("/formats", response_model=PaperFormat)
 def create_or_update_format(fmt: PaperFormat):
     # Recalculate section totals
     for s in fmt.sections:
@@ -298,7 +300,7 @@ def create_or_update_format(fmt: PaperFormat):
     return db.save_format(fmt)
 
 
-@app.post("/api/formats/upload", response_model=PaperFormat)
+@router.post("/formats/upload", response_model=PaperFormat)
 async def upload_format_file(file: UploadFile = File(...)):
     """Uploads a PDF, DOCX, or text paper format and parses its structure."""
     temp_path = settings.UPLOADS_DIR / f"temp_fmt_{file.filename}"
@@ -314,7 +316,7 @@ async def upload_format_file(file: UploadFile = File(...)):
             os.remove(temp_path)
 
 
-@app.delete("/api/formats/{format_id}")
+@router.delete("/formats/{format_id}")
 def delete_format(format_id: str):
     success = db.delete_format(format_id)
     return {"success": success}
@@ -324,7 +326,7 @@ def delete_format(format_id: str):
 # 4. QUESTION PAPER GENERATOR API
 # ==========================================
 
-@app.post("/api/generate/paper", response_model=QuestionPaper)
+@router.post("/generate/paper", response_model=QuestionPaper)
 def generate_question_paper(req: QuestionPaperGenerationRequest):
     """
     RAG-driven Question Paper Generation Pipeline:
@@ -551,12 +553,12 @@ def generate_question_paper(req: QuestionPaperGenerationRequest):
 # 5. PAPERS & LIVE EDITOR API
 # ==========================================
 
-@app.get("/api/papers", response_model=List[QuestionPaper])
+@router.get("/papers", response_model=List[QuestionPaper])
 def list_papers():
     return db.get_all_papers()
 
 
-@app.get("/api/papers/{paper_id}", response_model=QuestionPaper)
+@router.get("/papers/{paper_id}", response_model=QuestionPaper)
 def get_paper(paper_id: str):
     paper = db.get_paper_by_id(paper_id)
     if not paper:
@@ -564,7 +566,7 @@ def get_paper(paper_id: str):
     return paper
 
 
-@app.put("/api/papers/{paper_id}", response_model=QuestionPaper)
+@router.put("/papers/{paper_id}", response_model=QuestionPaper)
 def update_paper(paper_id: str, updated_paper: QuestionPaper):
     """Saves edits to questions, marks, order, or headers made in the Question Paper Editor."""
     # Recalculate live total marks
@@ -573,7 +575,7 @@ def update_paper(paper_id: str, updated_paper: QuestionPaper):
     return saved
 
 
-@app.post("/api/papers/{paper_id}/regenerate-question")
+@router.post("/papers/{paper_id}/regenerate-question")
 def regenerate_single_question(
     paper_id: str,
     question_number: int,
@@ -624,13 +626,13 @@ def regenerate_single_question(
     return current_q
 
 
-@app.delete("/api/papers/{paper_id}")
+@router.delete("/papers/{paper_id}")
 def delete_paper(paper_id: str):
     success = db.delete_paper(paper_id)
     return {"success": success}
 
 
-@app.get("/api/papers/{paper_id}/answer-key", response_model=AnswerKey)
+@router.get("/papers/{paper_id}/answer-key", response_model=AnswerKey)
 def get_paper_answer_key(paper_id: str):
     ak = db.get_answer_key_by_paper_id(paper_id)
     if not ak:
@@ -668,7 +670,7 @@ def get_paper_answer_key(paper_id: str):
 # 6. EXPORTS API (PDF & DOCX)
 # ==========================================
 
-@app.get("/api/papers/{paper_id}/export/pdf")
+@router.get("/papers/{paper_id}/export/pdf")
 def export_paper_pdf(paper_id: str):
     paper = db.get_paper_by_id(paper_id)
     if not paper:
@@ -681,7 +683,7 @@ def export_paper_pdf(paper_id: str):
     )
 
 
-@app.get("/api/papers/{paper_id}/export/answer-key-pdf")
+@router.get("/papers/{paper_id}/export/answer-key-pdf")
 def export_ak_pdf(paper_id: str):
     ak = db.get_answer_key_by_paper_id(paper_id)
     if not ak:
@@ -694,7 +696,7 @@ def export_ak_pdf(paper_id: str):
     )
 
 
-@app.get("/api/papers/{paper_id}/export/docx")
+@router.get("/papers/{paper_id}/export/docx")
 def export_paper_docx(paper_id: str):
     paper = db.get_paper_by_id(paper_id)
     if not paper:
@@ -711,7 +713,7 @@ def export_paper_docx(paper_id: str):
 # 7. BOOK CHATBOT API
 # ==========================================
 
-@app.post("/api/chat", response_model=ChatResponse)
+@router.post("/chat", response_model=ChatResponse)
 def chat_with_book_endpoint(req: ChatRequest):
     """
     Chat with Book endpoint with strict RAG and Book-Only Mode toggle.
@@ -773,7 +775,7 @@ def chat_with_book_endpoint(req: ChatRequest):
 # 8. QUESTION BANK API
 # ==========================================
 
-@app.get("/api/bank", response_model=List[QuestionBankItem])
+@router.get("/bank", response_model=List[QuestionBankItem])
 def list_question_bank(
     book_id: Optional[str] = None,
     chapter_id: Optional[str] = None,
@@ -790,12 +792,12 @@ def list_question_bank(
     )
 
 
-@app.post("/api/bank", response_model=QuestionBankItem)
+@router.post("/bank", response_model=QuestionBankItem)
 def create_question_bank_item(item: QuestionBankItem):
     return db.save_question_bank_item(item)
 
 
-@app.delete("/api/bank/{item_id}")
+@router.delete("/bank/{item_id}")
 def delete_question_bank_item(item_id: str):
     success = db.delete_question_bank_item(item_id)
     return {"success": success}
@@ -805,7 +807,7 @@ def delete_question_bank_item(item_id: str):
 # 9. PAST PAPER ANALYZER API
 # ==========================================
 
-@app.post("/api/analyzer/upload", response_model=PastPaperAnalysis)
+@router.post("/analyzer/upload", response_model=PastPaperAnalysis)
 async def upload_past_paper_analyzer(file: UploadFile = File(...)):
     temp_path = settings.UPLOADS_DIR / f"analyzer_{file.filename}"
     with open(temp_path, "wb") as buffer:
@@ -820,7 +822,7 @@ async def upload_past_paper_analyzer(file: UploadFile = File(...)):
             os.remove(temp_path)
 
 
-@app.get("/api/analyzer/history", response_model=List[PastPaperAnalysis])
+@router.get("/analyzer/history", response_model=List[PastPaperAnalysis])
 def list_past_paper_analyses():
     return db.get_all_past_paper_analyses()
 
@@ -829,7 +831,7 @@ def list_past_paper_analyses():
 # 10. SETTINGS API
 # ==========================================
 
-@app.get("/api/settings")
+@router.get("/settings")
 def get_settings():
     return {
         "llm_provider": settings.LLM_PROVIDER,
@@ -844,7 +846,7 @@ def get_settings():
     }
 
 
-@app.post("/api/settings")
+@router.post("/settings")
 def update_settings(payload: Dict[str, Any]):
     if "groq_api_key" in payload and payload["groq_api_key"]:
         settings.GROQ_API_KEY = payload["groq_api_key"]
@@ -867,6 +869,11 @@ def update_settings(payload: Dict[str, Any]):
 
     return {"message": "Settings updated successfully"}
 
+
+
+# Mount all API endpoints with /api prefix AND without prefix (for Vercel serverless compatibility)
+app.include_router(router, prefix="/api")
+app.include_router(router)
 
 # ==========================================
 # 11. FRONTEND STATIC FILE SERVING
