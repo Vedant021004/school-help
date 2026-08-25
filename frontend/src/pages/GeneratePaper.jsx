@@ -776,7 +776,7 @@ export default function GeneratePaper({ onNavigate, preselectedBookId, preselect
                   <Edit3 className="w-4 h-4" /> Open in Live Question Paper Editor &rarr;
                 </button>
                 <a
-                  href={`http://127.0.0.1:8000/api/papers/${generatedPaper.id}/export/pdf`}
+                  href={`/api/papers/${generatedPaper.id}/export/pdf`}
                   target="_blank"
                   rel="noreferrer"
                   className="px-4 py-3 bg-white border border-emerald-300 text-emerald-900 rounded-xl text-xs font-bold hover:bg-emerald-100/70 transition flex items-center gap-1.5 shadow-xs"
@@ -784,7 +784,7 @@ export default function GeneratePaper({ onNavigate, preselectedBookId, preselect
                   <Download className="w-3.5 h-3.5 text-emerald-700" /> Paper (PDF)
                 </a>
                 <a
-                  href={`http://127.0.0.1:8000/api/papers/${generatedPaper.id}/export/answer-key-pdf`}
+                  href={`/api/papers/${generatedPaper.id}/export/answer-key-pdf`}
                   target="_blank"
                   rel="noreferrer"
                   className="px-4 py-3 bg-white border border-emerald-300 text-emerald-900 rounded-xl text-xs font-bold hover:bg-emerald-100/70 transition flex items-center gap-1.5 shadow-xs"
