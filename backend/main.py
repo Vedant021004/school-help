@@ -48,19 +48,6 @@ app.add_middleware(
 )
 
 
-@app.middleware("http")
-async def normalize_api_prefix(request, call_next):
-    """
-    Ensures routes match whether Vercel forwards with or without the /api prefix.
-    """
-    path = request.url.path
-    if not path.startswith("/api") and not path.startswith("/assets") and path not in ("/", "/index.html", "/favicon.ico"):
-        # Internally rewrite scope path so FastAPI route table matches
-        request.scope["path"] = "/api" + path
-    response = await call_next(request)
-    return response
-
-
 # ==========================================
 # 0. ROOT & HEALTH ENDPOINTS
 # ==========================================
@@ -891,14 +878,11 @@ if FRONTEND_DIST.exists():
 
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
-        # Don't intercept API routes
-        if full_path.startswith("api"):
-            raise HTTPException(status_code=404, detail="API route not found")
         file_path = FRONTEND_DIST / full_path
         if file_path.is_file():
             return FileResponse(file_path)
         index_file = FRONTEND_DIST / "index.html"
         if index_file.is_file():
             return FileResponse(index_file)
-        raise HTTPException(status_code=404, detail="Page not found")
+        raise HTTPException(status_code=404, detail="Resource not found")
 

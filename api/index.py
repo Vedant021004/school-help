@@ -20,10 +20,18 @@ async def app(scope, receive, send):
         matched_path = headers.get(b"x-matched-path", b"").decode("utf-8", errors="ignore")
         forwarded_uri = headers.get(b"x-forwarded-uri", b"").decode("utf-8", errors="ignore")
 
-        if matched_path and matched_path != "/api/index.py" and not matched_path.endswith("index.py"):
+        if matched_path and not matched_path.endswith("index.py") and not matched_path.endswith(".py"):
             scope["path"] = matched_path
         elif forwarded_uri:
             scope["path"] = forwarded_uri.split("?")[0]
+
+        # Ensure API routes have the /api prefix so FastAPI routes match
+        path = scope.get("path", "")
+        if not path.startswith("/api") and not path.startswith("/assets") and path not in ("/", "/index.html", "/favicon.ico"):
+            scope["path"] = "/api" + path
+
+        if "raw_path" in scope:
+            scope["raw_path"] = scope["path"].encode("utf-8")
 
     await _fastapi_app(scope, receive, send)
 
