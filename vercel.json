@@ -3,11 +3,19 @@
   "outputDirectory": "frontend/dist",
   "rewrites": [
     {
-      "source": "/api/(.*)",
+      "source": "/api/:path*",
       "destination": "/api"
     },
     {
-      "source": "/((?!assets/|favicon.ico|.*\\..*).*)",
+      "source": "/assets/:path*",
+      "destination": "/assets/:path*"
+    },
+    {
+      "source": "/favicon.ico",
+      "destination": "/favicon.ico"
+    },
+    {
+      "source": "/:path*",
       "destination": "/index.html"
     }
   ]
