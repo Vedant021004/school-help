@@ -3,8 +3,6 @@ import re
 import uuid
 from typing import Dict, Any, List
 from collections import Counter
-import pymupdf
-import docx
 from backend.models import PastPaperAnalysis, PaperFormat, SectionFormat
 
 
@@ -17,11 +15,13 @@ def analyze_past_paper_file(file_path: str) -> PastPaperAnalysis:
     raw_text = ""
 
     if ext == ".pdf":
+        import pymupdf
         doc = pymupdf.open(file_path)
         for page in doc:
             raw_text += page.get_text("text") + "\n"
         doc.close()
     elif ext in [".docx", ".doc"]:
+        import docx
         doc = docx.Document(file_path)
         for p in doc.paragraphs:
             raw_text += p.text + "\n"

@@ -4,8 +4,12 @@ import uuid
 from pathlib import Path
 from typing import List, Dict, Any, Tuple, Optional
 from collections import Counter
-import pymupdf  # PyMuPDF
 from backend.models import Book, Chapter, TextChunk, ChunkMetadata
+
+def _get_pymupdf():
+    """Lazy import of pymupdf to avoid crash on serverless cold start."""
+    import pymupdf
+    return pymupdf
 
 
 def clean_text(text: str) -> str:
@@ -19,7 +23,7 @@ def clean_text(text: str) -> str:
     return text.strip()
 
 
-def extract_chapters_from_toc_page(doc: pymupdf.Document) -> List[Dict[str, Any]]:
+def extract_chapters_from_toc_page(doc) -> List[Dict[str, Any]]:
     """
     Scans the first 15 pages of the PDF for a 'Table of Contents' / 'Contents' section.
     Parses chapter numbers, titles, and starting page numbers using dotted-leader and line heuristics.
@@ -109,7 +113,7 @@ def extract_chapters_from_toc_page(doc: pymupdf.Document) -> List[Dict[str, Any]
     return []
 
 
-def detect_chapters_from_pdf(doc: pymupdf.Document) -> List[Dict[str, Any]]:
+def detect_chapters_from_pdf(doc) -> List[Dict[str, Any]]:
     """
     Multi-pass chapter detection engine:
     1. Table of Contents (TOC) bookmarks in PDF outline.
@@ -280,7 +284,7 @@ def extract_and_chunk_pdf(
     Extracts text page-by-page from PDF, discovers sub-sections (`1.1`, `Exercise 2.3`),
     attaches complete hierarchical chapter metadata to every chunk, and builds dense context.
     """
-    doc = pymupdf.open(file_path)
+    doc = _get_pymupdf().open(file_path)
     total_pages = len(doc)
     chunks: List[TextChunk] = []
 

@@ -1,16 +1,6 @@
 import os
 from pathlib import Path
 from typing import Optional
-from reportlab.lib.pagesizes import letter, A4
-from reportlab.lib import colors
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable, KeepTogether
-)
-import docx
-from docx.shared import Inches, Pt, RGBColor
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.enum.table import WD_TABLE_ALIGNMENT
 
 from backend.config import settings
 from backend.models import QuestionPaper, AnswerKey
@@ -22,6 +12,13 @@ from backend.models import QuestionPaper, AnswerKey
 
 def export_question_paper_pdf(paper: QuestionPaper) -> str:
     """Generates a professional examination PDF for the Question Paper."""
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import (
+        SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable, KeepTogether
+    )
+
     filename = f"Question_Paper_{paper.id[:8]}.pdf"
     file_path = settings.EXPORTS_DIR / filename
 
@@ -167,6 +164,13 @@ def export_question_paper_pdf(paper: QuestionPaper) -> str:
 
 def export_answer_key_pdf(ak: AnswerKey) -> str:
     """Generates a professional examination PDF for the Answer Key."""
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import (
+        SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable, KeepTogether
+    )
+
     filename = f"Answer_Key_{ak.paper_id[:8]}.pdf"
     file_path = settings.EXPORTS_DIR / filename
 
@@ -219,29 +223,33 @@ def export_answer_key_pdf(ak: AnswerKey) -> str:
 
 def export_question_paper_docx(paper: QuestionPaper) -> str:
     """Generates a styled Microsoft Word (.docx) Question Paper."""
+    import docx
+    from docx.shared import Inches, Pt
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+
     filename = f"Question_Paper_{paper.id[:8]}.docx"
     file_path = settings.EXPORTS_DIR / filename
 
-    doc = docx.Document()
+    document = docx.Document()
 
     # School Title Header
-    p_title = doc.add_paragraph()
+    p_title = document.add_paragraph()
     p_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
     run_title = p_title.add_run(paper.school_name.upper())
     run_title.font.name = 'Calibri'
     run_title.font.size = Pt(16)
     run_title.font.bold = True
 
-    p_sub = doc.add_paragraph()
+    p_sub = document.add_paragraph()
     p_sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
     run_sub = p_sub.add_run(f"{paper.exam_name} • {paper.date_str or '2025-26'}\nSubject: {paper.subject} | Grade: {paper.grade} | Time: {paper.duration_minutes // 60} Hours | Max Marks: {paper.total_marks}")
     run_sub.font.size = Pt(11)
 
     # General Instructions
     if paper.instructions:
-        doc.add_heading("General Instructions:", level=2)
+        document.add_heading("General Instructions:", level=2)
         for idx, inst in enumerate(paper.instructions):
-            doc.add_paragraph(f"{idx+1}. {inst}", style='List Number' if 'List Number' in doc.styles else None)
+            document.add_paragraph(f"{idx+1}. {inst}", style='List Number' if 'List Number' in document.styles else None)
 
     # Sections & Questions
     sections_map = {}
@@ -251,9 +259,9 @@ def export_question_paper_docx(paper: QuestionPaper) -> str:
         sections_map[q.section_name].append(q)
 
     for sec_name, q_list in sections_map.items():
-        doc.add_heading(f"{sec_name} ({sum(q.marks for q in q_list)} Marks)", level=1)
+        document.add_heading(f"{sec_name} ({sum(q.marks for q in q_list)} Marks)", level=1)
         for q in q_list:
-            p_q = doc.add_paragraph()
+            p_q = document.add_paragraph()
             r_qnum = p_q.add_run(f"Q{q.question_number}. ")
             r_qnum.bold = True
             p_q.add_run(f"{q.question_text} ")
@@ -262,8 +270,8 @@ def export_question_paper_docx(paper: QuestionPaper) -> str:
 
             if q.options:
                 for opt in q.options:
-                    p_opt = doc.add_paragraph(opt)
+                    p_opt = document.add_paragraph(opt)
                     p_opt.paragraph_format.left_indent = Inches(0.3)
 
-    doc.save(str(file_path))
+    document.save(str(file_path))
     return str(file_path)
