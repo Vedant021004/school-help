@@ -8,4 +8,11 @@ if root_dir not in sys.path:
 
 os.environ.setdefault("VERCEL", "1")
 
-from backend.main import app
+from backend.main import app as _fastapi_app
+
+async def app(scope, receive, send):
+    if scope["type"] == "http":
+        scope["root_path"] = ""
+    await _fastapi_app(scope, receive, send)
+
+handler = app
