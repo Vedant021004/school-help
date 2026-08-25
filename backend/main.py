@@ -85,6 +85,18 @@ def health_check():
     }
 
 
+@router.get("/debug-files")
+def debug_files():
+    results = {}
+    results["base_dir"] = str(settings.BASE_DIR)
+    results["cwd"] = os.getcwd()
+    results["frontend_dist"] = str(FRONTEND_DIST)
+    results["frontend_dist_exists"] = FRONTEND_DIST.exists()
+    if FRONTEND_DIST.exists():
+        results["dist_files"] = [str(p.relative_to(FRONTEND_DIST)) for p in FRONTEND_DIST.rglob("*")]
+    return results
+
+
 @router.get("/stats")
 def get_dashboard_stats():
     books = db.get_all_books()
