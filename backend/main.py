@@ -3,7 +3,7 @@ import json
 import uuid
 import shutil
 from typing import List, Optional, Dict, Any
-from fastapi import FastAPI, APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks, Depends
+from fastapi import FastAPI, APIRouter, Request, UploadFile, File, Form, HTTPException, BackgroundTasks, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -97,6 +97,18 @@ def debug_files():
     if FRONTEND_DIST.exists():
         results["dist_files"] = [str(p.relative_to(FRONTEND_DIST)) for p in FRONTEND_DIST.rglob("*")]
     return results
+
+
+@app.get("/debug-headers")
+@router.get("/debug-headers")
+def debug_headers(request: Request):
+    return {
+        "headers": dict(request.headers),
+        "url": str(request.url),
+        "path": request.url.path,
+        "scope_path": request.scope.get("path"),
+        "scope_raw_path": request.scope.get("raw_path", b"").decode("latin1", errors="ignore")
+    }
 
 
 @router.get("/stats")
