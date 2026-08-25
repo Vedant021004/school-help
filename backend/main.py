@@ -50,9 +50,24 @@ app.add_middleware(
 )
 
 
+@app.exception_handler(404)
+async def custom_404_handler(request: Request, exc: Any):
+    return JSONResponse(
+        status_code=404,
+        content={
+            "detail": "Route Not Found",
+            "request_url_path": str(request.url.path),
+            "request_scope_path": str(request.scope.get("path")),
+            "request_root_path": str(request.scope.get("root_path")),
+            "request_headers": dict(request.headers),
+            "request_method": request.method
+        }
+    )
+
+
 # ==========================================
 # 0. ROOT & HEALTH ENDPOINTS
-# ==========================================
+# ==========================================================
 
 FRONTEND_DIST = settings.BASE_DIR.parent / "frontend" / "dist"
 
