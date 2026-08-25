@@ -16,7 +16,12 @@ async def app(scope, receive, send):
         for h in (b"x-forwarded-uri", b"x-matched-path", b"x-vercel-matched-path"):
             val = headers.get(h, b"").decode("latin1", errors="ignore")
             if val and not val.endswith("index.py") and not val.endswith(".py"):
-                scope["path"] = val.split("?")[0]
+                if "?" in val:
+                    path_part, query_part = val.split("?", 1)
+                    scope["path"] = path_part
+                    scope["query_string"] = query_part.encode("latin1")
+                else:
+                    scope["path"] = val
                 break
 
         if "raw_path" in scope:
