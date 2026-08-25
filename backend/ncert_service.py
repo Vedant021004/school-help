@@ -171,19 +171,22 @@ def import_ncert_textbook(book_code: str) -> Book:
         merged_doc.close()
         total_pages = current_page_cursor - 1
     else:
-        # Build catalog curriculum chapters
-        total_pages = catalog_item["total_chapters"] * 16
-        for ch_info in catalog_item["chapters"]:
-            ch_num = ch_info["num"]
-            chapters_meta.append(Chapter(
-                id=f"chap-{book_code}-{ch_num}",
-                chapter_number=ch_num,
-                title=ch_info["title"],
-                start_page=(ch_num - 1) * 16 + 1,
-                end_page=ch_num * 16,
-                summary=f"NCERT Curriculum Chapter {ch_num}: {ch_info['title']}",
-                sections=["Fundamental Concepts", "Illustrative Examples", "NCERT Exercise"]
-            ))
+        # If no remote PDF was downloaded, populate metadata if not already done
+        if not chapters_meta:
+            total_pages = catalog_item["total_chapters"] * 16
+            for ch_info in catalog_item["chapters"]:
+                ch_num = ch_info["num"]
+                chapters_meta.append(Chapter(
+                    id=f"chap-{book_code}-{ch_num}",
+                    chapter_number=ch_num,
+                    title=ch_info["title"],
+                    start_page=(ch_num - 1) * 16 + 1,
+                    end_page=ch_num * 16,
+                    summary=f"NCERT Curriculum Chapter {ch_num}: {ch_info['title']}",
+                    sections=["Fundamental Concepts", "Illustrative Examples", "NCERT Exercise"]
+                ))
+        else:
+            total_pages = current_page_cursor - 1
 
     book = Book(
         id=book_id,

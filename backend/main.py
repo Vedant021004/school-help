@@ -28,6 +28,7 @@ from backend.exporters import (
 )
 
 from backend.ncert_service import search_ncert_catalog, import_ncert_textbook
+from backend.ncert_catalog_data import FULL_NCERT_CATALOG
 # Initialize database schema and seeds
 db.init_db()
 
