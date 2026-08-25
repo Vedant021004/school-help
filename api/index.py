@@ -12,14 +12,13 @@ from backend.main import app as _fastapi_app
 
 async def app(scope, receive, send):
     if scope["type"] == "http":
+        scope["root_path"] = ""
         qs = scope.get("query_string", b"").decode("latin1", errors="ignore")
         params = urllib.parse.parse_qs(qs, keep_blank_values=True)
 
         if "__path__" in params:
-            real_subpath = params.pop("__path__")[0]
-            if not real_subpath.startswith("/"):
-                real_subpath = "/" + real_subpath
-            scope["path"] = real_subpath
+            sub = params.pop("__path__")[0].lstrip("/")
+            scope["path"] = "/api/" + sub
             scope["query_string"] = urllib.parse.urlencode(params, doseq=True).encode("latin1")
         else:
             headers = dict(scope.get("headers", []))
