@@ -58,10 +58,10 @@ FRONTEND_DIST = settings.BASE_DIR.parent / "frontend" / "dist"
 
 @app.get("/")
 def serve_root():
-    if not settings.IS_SERVERLESS and FRONTEND_DIST.exists():
+    if FRONTEND_DIST.exists():
         index_file = FRONTEND_DIST / "index.html"
         if index_file.is_file():
-            return FileResponse(index_file)
+            return FileResponse(index_file, media_type="text/html")
     return {
         "status": "healthy",
         "app": settings.APP_NAME,
@@ -890,10 +890,10 @@ app.include_router(router, prefix="/api")
 app.include_router(router)
 
 # ==========================================
-# 11. FRONTEND STATIC FILE SERVING (LOCAL ONLY)
+# 11. FRONTEND STATIC FILE SERVING
 # ==========================================
 
-if not settings.IS_SERVERLESS and FRONTEND_DIST.exists():
+if FRONTEND_DIST.exists():
     if (FRONTEND_DIST / "assets").exists():
         app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="static_assets")
 
