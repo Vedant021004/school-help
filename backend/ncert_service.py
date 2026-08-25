@@ -123,7 +123,7 @@ def import_ncert_textbook(book_code: str) -> Book:
         url = f"https://ncert.nic.in/textbook/pdf/{book_code}{ch_num:02d}.pdf"
 
         try:
-            r = session.get(url, headers=headers, timeout=6)
+            r = session.get(url, headers=headers, timeout=2)
             if r.status_code == 200 and len(r.content) > 1000:
                 chap_doc = pymupdf.open(stream=r.content, filetype="pdf")
                 ch_page_count = len(chap_doc)

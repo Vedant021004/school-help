@@ -23,7 +23,7 @@ class LLMService:
     def __init__(self):
         self.provider = settings.LLM_PROVIDER
         self.groq_key = settings.GROQ_API_KEY or os.environ.get("GROQ_API_KEY", "")
-        self.groq_model = settings.GROQ_MODEL or "llama-3.3-70b-versatile"
+        self.groq_model = settings.GROQ_MODEL or "openai/gpt-oss-120b"
         self.gemini_key = settings.GEMINI_API_KEY or os.environ.get("GEMINI_API_KEY", "")
         self.openai_key = settings.OPENAI_API_KEY or os.environ.get("OPENAI_API_KEY", "")
         self.anthropic_key = settings.ANTHROPIC_API_KEY or os.environ.get("ANTHROPIC_API_KEY", "")

@@ -51,11 +51,11 @@ class GroundingVerifier:
         a_overlap = sum(1 for t in a_tokens if t in s_tokens) / len(a_tokens)
 
         # Numbers / formulas check: if question has numbers or specific formulas, they must match or exist
-        q_nums = re.findall(r'\b\d+(\.\d+)?\b', question_text)
-        s_nums = set(re.findall(r'\b\d+(\.\d+)?\b', source_text))
+        q_nums = re.findall(r'\b\d+(?:\.\d+)?\b', question_text)
+        s_nums = set(re.findall(r'\b\d+(?:\.\d+)?\b', source_text))
         num_score = 1.0
         if q_nums:
-            matched_nums = sum(1 for n in q_nums if n[0] in s_nums or any(n[0] in t for t in s_tokens))
+            matched_nums = sum(1 for n in q_nums if n in s_nums or any(n in t for t in s_tokens))
             num_score = matched_nums / len(q_nums)
 
         # Weighted final grounding score
