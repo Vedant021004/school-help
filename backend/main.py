@@ -52,6 +52,18 @@ app.add_middleware(
 # 1. DASHBOARD & STATS API
 # ==========================================
 
+@app.get("/api/health")
+def health_check():
+    return {
+        "status": "healthy",
+        "app": settings.APP_NAME,
+        "version": settings.APP_VERSION,
+        "llm_provider": settings.LLM_PROVIDER,
+        "groq_model": settings.GROQ_MODEL,
+        "groq_active": bool(settings.GROQ_API_KEY)
+    }
+
+
 @app.get("/api/stats")
 def get_dashboard_stats():
     books = db.get_all_books()

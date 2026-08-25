@@ -13,7 +13,9 @@ DB_FILE = settings.DB_PATH
 
 
 def get_db_connection():
-    conn = sqlite3.connect(str(DB_FILE))
+    db_path = Path(settings.DB_PATH)
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
     return conn
 

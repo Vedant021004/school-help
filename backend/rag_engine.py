@@ -192,6 +192,7 @@ class RAGEngine:
         """Ensures all existing books in SQLite database have their chunks loaded into memory."""
         try:
             import backend.database as db
+            db.init_db()
             all_books = db.get_all_books()
             for book in all_books:
                 self.ensure_book_indexed(book.id, book_obj=book)
