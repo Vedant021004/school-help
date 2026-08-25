@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "cd frontend && npm install && npm run build",
+    "build": "cd frontend && npm install && npm run build && node -e \"const fs = require('fs'); fs.mkdirSync('../public', {recursive: true}); fs.cpSync('dist', '../public', {recursive: true});\"",
     "test": "pytest backend/test_backend.py"
   }
 }
