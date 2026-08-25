@@ -8,5 +8,5 @@ if root_dir not in sys.path:
 
 from backend.main import app
 
-# Vercel ASGI serverless handler
+# Export app and handler for Vercel
 handler = app

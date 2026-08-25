@@ -1,17 +1,36 @@
 import os
+import tempfile
 from pathlib import Path
 from pydantic_settings import BaseSettings
 
 BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = BASE_DIR / "data"
+
+# Check if running in Vercel / serverless environment (read-only filesystem)
+IS_SERVERLESS = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
+
+if IS_SERVERLESS:
+    DATA_DIR = Path(tempfile.gettempdir()) / "school_help_data"
+else:
+    DATA_DIR = BASE_DIR / "data"
+
 UPLOADS_DIR = DATA_DIR / "uploads"
 EXPORTS_DIR = DATA_DIR / "exports"
 CHROMA_DIR = DATA_DIR / "chroma_db"
 DB_PATH = DATA_DIR / "teacher_assistant.db"
 
-# Ensure runtime directories exist
-for d in [DATA_DIR, UPLOADS_DIR, EXPORTS_DIR, CHROMA_DIR]:
-    d.mkdir(parents=True, exist_ok=True)
+# Ensure runtime directories exist safely
+try:
+    for d in [DATA_DIR, UPLOADS_DIR, EXPORTS_DIR, CHROMA_DIR]:
+        d.mkdir(parents=True, exist_ok=True)
+except Exception:
+    # If BASE_DIR is read-only, fallback to temp directory
+    DATA_DIR = Path(tempfile.gettempdir()) / "school_help_data"
+    UPLOADS_DIR = DATA_DIR / "uploads"
+    EXPORTS_DIR = DATA_DIR / "exports"
+    CHROMA_DIR = DATA_DIR / "chroma_db"
+    DB_PATH = DATA_DIR / "teacher_assistant.db"
+    for d in [DATA_DIR, UPLOADS_DIR, EXPORTS_DIR, CHROMA_DIR]:
+        d.mkdir(parents=True, exist_ok=True)
 
 
 class Settings(BaseSettings):
@@ -48,4 +67,5 @@ class Settings(BaseSettings):
         extra = "ignore"
 
 
+# Global Settings Instance
 settings = Settings()
