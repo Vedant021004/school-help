@@ -684,33 +684,50 @@ def chat_with_book_endpoint(req: ChatRequest):
     """
     Chat with Book endpoint with strict RAG and Book-Only Mode toggle.
     """
-    book = db.get_book_by_id(req.book_id)
-    if not book:
-        code = req.book_id.replace("ncert-", "")
-        if any(b["code"] == code for b in FULL_NCERT_CATALOG):
-            from backend.ncert_service import import_ncert_textbook
-            book = import_ncert_textbook(code)
-        else:
-            raise HTTPException(status_code=404, detail="Book not found")
+    is_global = not req.book_id or req.book_id in ["all", "global", "*"]
+    
+    if is_global:
+        book_title = "NCERT Curriculum & All Textbooks"
+        chapter_name = "Global Knowledge Base"
+        passages = rag_engine.query_textbook(
+            query=req.message,
+            book_id="all",
+            top_k=4,
+            allow_fallback=not req.book_only_mode
+        )
+        if passages:
+            book_title = passages[0].book_title
+            chapter_name = passages[0].chapter_name
+    else:
+        book = db.get_book_by_id(req.book_id)
+        if not book:
+            code = req.book_id.replace("ncert-", "")
+            if any(b["code"] == code for b in FULL_NCERT_CATALOG):
+                from backend.ncert_service import import_ncert_textbook
+                book = import_ncert_textbook(code)
+            else:
+                raise HTTPException(status_code=404, detail="Book not found")
 
-    chapter_ids = [req.chapter_id] if req.chapter_id else [c.id for c in book.chapters]
-    chapter_name = "All Chapters"
-    if req.chapter_id:
-        for c in book.chapters:
-            if c.id == req.chapter_id:
-                chapter_name = c.title
-                break
+        book_title = book.title
+        chapter_ids = [req.chapter_id] if req.chapter_id else [c.id for c in book.chapters]
+        chapter_name = "All Chapters"
+        if req.chapter_id:
+            for c in book.chapters:
+                if c.id == req.chapter_id:
+                    chapter_name = c.title
+                    break
 
-    # Strictly retrieve passages from selected book & chapter
-    passages = rag_engine.query_textbook(
-        query=req.message,
-        book_id=req.book_id,
-        chapter_ids=chapter_ids,
-        top_k=4,
-        allow_fallback=not req.book_only_mode
-    )
+        # Strictly retrieve passages from selected book & chapter
+        passages = rag_engine.query_textbook(
+            query=req.message,
+            book_id=req.book_id,
+            chapter_ids=chapter_ids,
+            top_k=4,
+            allow_fallback=not req.book_only_mode
+        )
+
     response = llm_service.chat_with_book(
-        book_title=book.title,
+        book_title=book_title,
         chapter_name=chapter_name,
         query=req.message,
         passages=passages,

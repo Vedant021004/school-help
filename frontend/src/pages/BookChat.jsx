@@ -3,16 +3,17 @@ import {
   MessageSquare, Send, BookOpen, Layers, ShieldCheck, Sparkles, 
   ExternalLink, ChevronRight, X, AlertCircle, HelpCircle, Check,
   Lightbulb, RefreshCw, Globe, Search, Filter, BookMarked,
-  CheckCircle2, BookCheck, Bookmark, FileQuestion, GraduationCap
+  CheckCircle2, BookCheck, Bookmark, FileQuestion, GraduationCap, Compass
 } from 'lucide-react';
 import { fetchBooks, fetchNcertCatalog, fetchNcertMeta, sendChatMessage } from '../api';
 
-const QUICK_PROMPTS = [
-  "Explain this chapter in simple language for students.",
-  "What are the most important definitions and formulas?",
-  "Give me 5 difficult practice questions from this chapter.",
-  "Summarize the key concepts on page 6 of this textbook.",
-  "What are common student misconceptions on this topic?"
+const GLOBAL_QUICK_PROMPTS = [
+  "Explain Photosynthesis and light/dark reactions with chemical equations.",
+  "State Newton's Three Laws of Motion with real-life applications.",
+  "What are the properties of Rational Numbers and closure property?",
+  "Explain the key causes and impact of the French Revolution.",
+  "What is GDP and how is national income calculated in Economics?",
+  "What are the major differences between Mitosis and Meiosis?"
 ];
 
 // Helper to format inline bold/italic/code in text strings
@@ -185,7 +186,7 @@ function StructuredMessageViewer({ content }) {
 }
 
 export default function BookChat({ preselectedBookId, initialQuery }) {
-  const [sourceMode, setSourceMode] = useState('my-books'); // 'my-books' | 'ncert-all'
+  const [sourceMode, setSourceMode] = useState(preselectedBookId ? 'my-books' : 'global'); // 'global' | 'my-books' | 'ncert-specific'
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -197,7 +198,7 @@ export default function BookChat({ preselectedBookId, initialQuery }) {
   const [ncertBookSearch, setNcertBookSearch] = useState('');
   
   // Selection
-  const [selectedBookId, setSelectedBookId] = useState(preselectedBookId || '');
+  const [selectedBookId, setSelectedBookId] = useState(preselectedBookId || 'all');
   const [selectedChapterId, setSelectedChapterId] = useState('');
   const [bookOnlyMode, setBookOnlyMode] = useState(true);
 
@@ -216,14 +217,16 @@ export default function BookChat({ preselectedBookId, initialQuery }) {
   }, []);
 
   useEffect(() => {
-    loadNcertCatalogForChat();
-  }, [ncertClassFilter, ncertSubjectFilter, ncertBookSearch]);
+    if (sourceMode === 'ncert-specific') {
+      loadNcertCatalogForChat();
+    }
+  }, [sourceMode, ncertClassFilter, ncertSubjectFilter, ncertBookSearch]);
 
   useEffect(() => {
-    if (initialQuery && selectedBookId && messages.length === 0) {
+    if (initialQuery && messages.length === 0) {
       handleSendMessage(initialQuery);
     }
-  }, [initialQuery, selectedBookId]);
+  }, [initialQuery]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -241,8 +244,7 @@ export default function BookChat({ preselectedBookId, initialQuery }) {
 
       if (preselectedBookId) {
         setSelectedBookId(preselectedBookId);
-      } else if (storedBooks.length > 0) {
-        setSelectedBookId(storedBooks[0].id);
+        setSourceMode('my-books');
       }
     } catch (err) {
       console.error('Failed to load books for chat:', err);
@@ -267,7 +269,7 @@ export default function BookChat({ preselectedBookId, initialQuery }) {
 
   // Find active book object (from stored books OR ncert catalog)
   const activeBook = useMemo(() => {
-    if (!selectedBookId) return null;
+    if (!selectedBookId || selectedBookId === 'all') return null;
     const fromMyBooks = books.find(b => b.id === selectedBookId);
     if (fromMyBooks) return fromMyBooks;
 
@@ -301,7 +303,7 @@ export default function BookChat({ preselectedBookId, initialQuery }) {
 
   const handleSendMessage = async (queryText) => {
     const textToSend = queryText || inputQuery;
-    if (!textToSend.trim() || !selectedBookId) return;
+    if (!textToSend.trim()) return;
 
     const userMsg = {
       role: 'user',
@@ -315,8 +317,8 @@ export default function BookChat({ preselectedBookId, initialQuery }) {
 
     try {
       const payload = {
-        book_id: selectedBookId,
-        chapter_id: selectedChapterId || null,
+        book_id: sourceMode === 'global' ? 'all' : selectedBookId,
+        chapter_id: sourceMode === 'global' ? null : (selectedChapterId || null),
         message: textToSend,
         conversation_history: messages.slice(-4),
         book_only_mode: bookOnlyMode
@@ -337,7 +339,7 @@ export default function BookChat({ preselectedBookId, initialQuery }) {
     } catch (err) {
       const errorMsg = {
         role: 'assistant',
-        content: `### ⚠️ Notice\nError: ${err.message}. Please verify your textbook selection.`,
+        content: `### ⚠️ Notice\nError: ${err.message}. Please verify your question or textbook selection.`,
         sources: [],
         is_grounded: false,
         timestamp: new Date().toISOString()
@@ -350,32 +352,53 @@ export default function BookChat({ preselectedBookId, initialQuery }) {
 
   return (
     <div className="h-[calc(100vh-140px)] flex flex-col gap-4 animate-fadeIn">
-      {/* Top Header & Dual Selector Bar */}
+      {/* Top Header & 3-Way Mode Selector Bar */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-3">
-        {/* Row 1: Source Tabs + Mode Toggle */}
+        {/* Row 1: 3-Way Mode Switcher + Mode Toggle */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={() => setSourceMode('my-books')}
+              onClick={() => {
+                setSourceMode('global');
+                setSelectedBookId('all');
+                setSelectedChapterId('');
+              }}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 ${
+                sourceMode === 'global'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              <Compass className="w-3.5 h-3.5 text-amber-300" />
+              🌐 Ask Anything Across All 1,122+ Books
+            </button>
+            <button
+              onClick={() => {
+                setSourceMode('my-books');
+                if (books.length > 0) setSelectedBookId(books[0].id);
+              }}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 ${
                 sourceMode === 'my-books'
                   ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
               <BookOpen className="w-3.5 h-3.5" />
               My Library ({books.length})
             </button>
             <button
-              onClick={() => setSourceMode('ncert-all')}
+              onClick={() => {
+                setSourceMode('ncert-specific');
+                loadNcertCatalogForChat();
+              }}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 ${
-                sourceMode === 'ncert-all'
+                sourceMode === 'ncert-specific'
                   ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
               <Globe className="w-3.5 h-3.5" />
-              🏛️ Official NCERT Portal (1,122 Books)
+              🏛️ Focus on Specific NCERT Book
             </button>
           </div>
 
@@ -395,8 +418,15 @@ export default function BookChat({ preselectedBookId, initialQuery }) {
           </div>
         </div>
 
-        {/* Row 2: Cascading Selectors depending on Source Mode */}
-        {sourceMode === 'my-books' ? (
+        {/* Row 2: Dynamic Controls */}
+        {sourceMode === 'global' ? (
+          <div className="flex items-center gap-2 text-xs text-indigo-950 bg-indigo-50/80 p-2.5 rounded-xl border border-indigo-100">
+            <Sparkles className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+            <span>
+              <strong>Global Curriculum Intelligence:</strong> Ask any question from Science, Math, Physics, Chemistry, Biology, Social Science, History, Economics, Languages, etc. The AI automatically matches the topic across all <strong>1,122+ NCERT textbooks</strong> and cites the exact book, chapter, and page!
+            </span>
+          </div>
+        ) : sourceMode === 'my-books' ? (
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Select Book:</span>
@@ -512,8 +542,8 @@ export default function BookChat({ preselectedBookId, initialQuery }) {
           </div>
         )}
 
-        {/* Active Book Badge Chip */}
-        {activeBook && (
+        {/* Active Book Badge Chip (When specific book selected) */}
+        {activeBook && sourceMode !== 'global' && (
           <div className="flex items-center gap-2 text-xs text-slate-600 bg-indigo-50/70 px-3 py-1.5 rounded-xl border border-indigo-100">
             <span className="font-extrabold text-indigo-900 flex items-center gap-1.5">
               <BookMarked className="w-3.5 h-3.5 text-indigo-600" />
@@ -540,19 +570,22 @@ export default function BookChat({ preselectedBookId, initialQuery }) {
             {messages.length === 0 ? (
               <div className="text-center py-12 space-y-4 max-w-lg mx-auto">
                 <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center mx-auto shadow-sm">
-                  <MessageSquare className="w-7 h-7" />
+                  <Compass className="w-7 h-7" />
                 </div>
                 <h3 className="text-lg font-bold text-slate-900">
-                  Chat with {activeBook?.title || 'Selected Textbook'}
+                  {sourceMode === 'global' ? 'Global NCERT Curriculum Assistant' : `Chat with ${activeBook?.title || 'Selected Textbook'}`}
                 </h3>
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  Ask definitions, chapter summaries, formulas, or generate custom examination questions. In <strong>Book-Only Mode</strong>, the assistant answers strictly with structured curriculum sections.
+                  {sourceMode === 'global' 
+                    ? 'Ask questions on any subject, formula, definition, historical event, or concept across all 1,122+ NCERT textbooks (Classes 1–12).'
+                    : 'Ask definitions, chapter summaries, formulas, or generate custom examination questions strictly grounded in this textbook.'
+                  }
                 </p>
 
                 <div className="space-y-2 pt-2">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Quick Prompts:</span>
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Sample Questions Across Subjects:</span>
                   <div className="flex flex-col gap-2 text-left">
-                    {QUICK_PROMPTS.map((prompt, pIdx) => (
+                    {GLOBAL_QUICK_PROMPTS.map((prompt, pIdx) => (
                       <button
                         key={pIdx}
                         onClick={() => handleSendMessage(prompt)}
@@ -600,7 +633,7 @@ export default function BookChat({ preselectedBookId, initialQuery }) {
                               className="text-[11px] bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 text-indigo-700 px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 shadow-xs transition"
                             >
                               <BookOpen className="w-3 h-3 text-indigo-500" />
-                              Ch {src.chapter_number} • Page {src.page} ({src.section})
+                              {src.book_title.split('-')[0]} • Ch {src.chapter_number} • Page {src.page} ({src.section})
                             </button>
                           ))}
                         </div>
@@ -630,7 +663,7 @@ export default function BookChat({ preselectedBookId, initialQuery }) {
             {isSending && (
               <div className="flex items-center gap-3 text-indigo-600 text-xs font-semibold p-3 bg-indigo-50/50 rounded-xl border border-indigo-100 max-w-md animate-pulse">
                 <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Retrieving & synthesizing structured textbook context...</span>
+                <span>Searching & synthesizing structured context across curriculum textbooks...</span>
               </div>
             )}
 
@@ -645,9 +678,9 @@ export default function BookChat({ preselectedBookId, initialQuery }) {
               onChange={(e) => setInputQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
               placeholder={
-                activeBook 
-                  ? `Ask definitions, explanations, practice questions about ${activeBook.title}...` 
-                  : "Select a textbook to begin chatting..."
+                sourceMode === 'global'
+                  ? "Ask anything from any textbook (e.g. Newton's laws, Photosynthesis, French Revolution, Trigonometry)..."
+                  : `Ask definitions, explanations, practice questions about ${activeBook?.title || 'this textbook'}...`
               }
               className="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white shadow-sm"
             />

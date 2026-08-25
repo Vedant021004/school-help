@@ -7,6 +7,7 @@ from pathlib import Path
 from backend.config import settings
 from backend.models import TextChunk, ChunkMetadata, QuestionSourceCitation, Book
 from backend.sample_data import SAMPLE_TEXTBOOK_CHUNKS
+from backend.ncert_catalog_data import FULL_NCERT_CATALOG
 
 
 STOPWORDS = {
@@ -69,7 +70,7 @@ class HybridVectorIndex:
     def search(
         self,
         query: str,
-        book_id: str,
+        book_id: Optional[str] = None,
         chapter_ids: Optional[List[str]] = None,
         top_k: int = 5
     ) -> List[Tuple[TextChunk, float]]:
@@ -98,11 +99,13 @@ class HybridVectorIndex:
         k1 = 1.5
         b = 0.75
 
+        is_global = not book_id or book_id in ["all", "global", "*"]
+
         for chunk_id, chunk in self.chunks.items():
-            # STRICT PRE-RETRIEVAL METADATA FILTERING
-            if chunk.metadata.book_id != book_id:
+            # METADATA FILTERING (Strict when a specific book is chosen)
+            if not is_global and chunk.metadata.book_id != book_id:
                 continue
-            if chapter_ids and chunk.metadata.chapter_id not in chapter_ids:
+            if not is_global and chapter_ids and chunk.metadata.chapter_id not in chapter_ids:
                 continue
 
             # 1. Cosine similarity score
@@ -135,11 +138,12 @@ class HybridVectorIndex:
         scores.sort(key=lambda x: x[1], reverse=True)
         return scores[:top_k]
 
-    def get_all_for_chapters(self, book_id: str, chapter_ids: Optional[List[str]] = None) -> List[TextChunk]:
-        """Returns all chunks strictly inside the selected chapters (or whole book)."""
+    def get_all_for_chapters(self, book_id: Optional[str] = None, chapter_ids: Optional[List[str]] = None) -> List[TextChunk]:
+        """Returns all chunks strictly inside the selected chapters (or whole book/global)."""
+        is_global = not book_id or book_id in ["all", "global", "*"]
         result = []
         for c in self.chunks.values():
-            if c.metadata.book_id == book_id:
+            if is_global or c.metadata.book_id == book_id:
                 if not chapter_ids or c.metadata.chapter_id in chapter_ids:
                     result.append(c)
         return result
@@ -148,7 +152,8 @@ class HybridVectorIndex:
 class RAGEngine:
     """
     Enhanced RAG engine with strict metadata pre-filtering,
-    on-demand book chunk restoration, multi-query expansion, and clean citation generation.
+    multi-book global intelligence routing, on-demand book chunk restoration,
+    and clean citation generation.
     """
     def __init__(self):
         self.vector_index = HybridVectorIndex()
@@ -198,6 +203,9 @@ class RAGEngine:
         Verifies that chunks for a given book exist in memory index.
         If missing, loads from PDF file or generates structured curriculum chunks.
         """
+        if not book_id or book_id in ["all", "global", "*"]:
+            return
+
         existing_chunks = self.vector_index.get_all_for_chapters(book_id)
         if len(existing_chunks) > 0:
             return
@@ -205,7 +213,17 @@ class RAGEngine:
         import backend.database as db
         book = book_obj or db.get_book_by_id(book_id)
         if not book:
-            return
+            # Check if it's an NCERT book code e.g. "ncert-jesc1"
+            code = book_id.replace("ncert-", "")
+            cat_match = next((b for b in FULL_NCERT_CATALOG if b["code"] == code), None)
+            if cat_match:
+                from backend.ncert_service import import_ncert_textbook
+                try:
+                    book = import_ncert_textbook(code)
+                except Exception as e:
+                    print(f"[RAG] Auto-importing {code} notice: {e}")
+            if not book:
+                return
 
         # 1. If PDF file exists on disk, parse with PyMuPDF
         if book.file_path and os.path.exists(book.file_path):
@@ -267,6 +285,38 @@ class RAGEngine:
             book.is_indexed = True
             db.save_book(book)
 
+    def find_best_ncert_book_for_query(self, query: str) -> Optional[str]:
+        """Finds the best matching NCERT book code across the entire 1122 catalog for an open query."""
+        q_tokens = [w.lower() for w in re.findall(r'\b[a-zA-Z0-9]{3,}\b', query) if w.lower() not in STOPWORDS]
+        if not q_tokens:
+            return None
+
+        best_book = None
+        best_score = 0
+
+        for b in FULL_NCERT_CATALOG:
+            score = 0
+            t_lower = b["title"].lower()
+            s_lower = b["subject"].lower()
+            ch_titles = [c["title"].lower() for c in b.get("chapters", [])]
+
+            for tok in q_tokens:
+                if tok in t_lower:
+                    score += 5
+                if tok in s_lower:
+                    score += 4
+                for ch in ch_titles:
+                    if tok in ch:
+                        score += 3
+
+            if score > best_score:
+                best_score = score
+                best_book = b
+
+        if best_book and best_score >= 3:
+            return best_book["code"]
+        return None
+
     def index_chunks(self, chunks: List[TextChunk]):
         """Indexes chunks into the vector and BM25 index."""
         if not chunks:
@@ -276,26 +326,40 @@ class RAGEngine:
     def query_textbook(
         self,
         query: str,
-        book_id: str,
+        book_id: Optional[str] = None,
         chapter_ids: Optional[List[str]] = None,
         top_k: int = 4,
         allow_fallback: bool = True
     ) -> List[QuestionSourceCitation]:
         """
-        Retrieves passages strictly matching book_id and chapter_ids.
+        Retrieves passages strictly matching book_id (or across ALL books if book_id='all'/None).
         Returns clean QuestionSourceCitation objects.
         """
-        self.ensure_book_indexed(book_id)
+        is_global = not book_id or book_id in ["all", "global", "*"]
+
+        if not is_global:
+            self.ensure_book_indexed(book_id)
 
         citations: List[QuestionSourceCitation] = []
         retrieved_ids = set()
 
         matches = self.vector_index.search(
             query=query,
-            book_id=book_id,
-            chapter_ids=chapter_ids,
+            book_id=book_id if not is_global else None,
+            chapter_ids=chapter_ids if not is_global else None,
             top_k=top_k
         )
+
+        # If global search has no matches in current memory index, search 1122 NCERT catalog on the fly
+        if is_global and not matches:
+            best_code = self.find_best_ncert_book_for_query(query)
+            if best_code:
+                self.ensure_book_indexed(f"ncert-{best_code}")
+                matches = self.vector_index.search(
+                    query=query,
+                    book_id=f"ncert-{best_code}",
+                    top_k=top_k
+                )
 
         for chunk, score in matches:
             if chunk.id not in retrieved_ids:
@@ -315,7 +379,10 @@ class RAGEngine:
 
         # Fallback to available passages in the selected chapters when allow_fallback is True or query is broad
         if not citations and allow_fallback:
-            fallback_chunks = self.vector_index.get_all_for_chapters(book_id, chapter_ids)
+            fallback_chunks = self.vector_index.get_all_for_chapters(
+                book_id if not is_global else None, 
+                chapter_ids if not is_global else None
+            )
             for chunk in fallback_chunks[:top_k]:
                 clean_text_ref = self._clean_excerpt(chunk.content)
                 citations.append(QuestionSourceCitation(
