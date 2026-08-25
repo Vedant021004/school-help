@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Settings as SettingsIcon, Key, ShieldCheck, Cpu, Sliders, Check, 
-  RefreshCw, AlertCircle, Info, Sparkles
+  RefreshCw, AlertCircle, Info, Sparkles, Zap, ExternalLink
 } from 'lucide-react';
 import { fetchSettings, saveSettings } from '../api';
 
@@ -11,7 +11,9 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({
-    llm_provider: 'gemini',
+    llm_provider: 'groq',
+    groq_api_key: '',
+    groq_model: 'llama-3.3-70b-versatile',
     gemini_api_key: '',
     openai_api_key: '',
     grounding_threshold: 0.60
@@ -27,7 +29,9 @@ export default function Settings() {
       const data = await fetchSettings();
       setSettings(data);
       setForm({
-        llm_provider: data.llm_provider || 'gemini',
+        llm_provider: data.llm_provider || 'groq',
+        groq_api_key: '',
+        groq_model: data.groq_model || 'llama-3.3-70b-versatile',
         gemini_api_key: '',
         openai_api_key: '',
         grounding_threshold: data.grounding_threshold || 0.60
@@ -66,17 +70,24 @@ export default function Settings() {
       <div>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900">System Settings & LLM Configuration</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Configure external LLM providers (Gemini, OpenAI, Claude, Ollama) and anti-hallucination sensitivity thresholds.
+          Configure ultra-fast LLM engines (Groq LLaMA 3.3, Google Gemini, OpenAI) and anti-hallucination sensitivity thresholds.
         </p>
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">
-        {/* Zero-Config Offline Mode Info Box */}
-        <div className="p-5 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-start gap-3">
-          <Sparkles className="w-5 h-5 text-indigo-600 flex-shrink-0 mt-0.5" />
-          <div className="space-y-1 text-xs text-indigo-900 leading-relaxed">
-            <span className="font-bold block">Offline Zero-Config Engine Active</span>
-            The application is pre-configured with a deterministic textbook grounding engine that functions completely offline without requiring any paid API keys. You can also optionally connect your Google Gemini or OpenAI API keys below for enhanced linguistic styling.
+        {/* Groq High-Speed Recommendation Banner */}
+        <div className="p-5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-indigo-500/10 to-purple-500/10 border border-amber-300/60 flex items-start gap-3">
+          <Zap className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div className="space-y-1 text-xs text-slate-800 leading-relaxed">
+            <span className="font-extrabold text-slate-900 flex items-center gap-1.5">
+              ⚡ Ultra-Fast Groq Inference Engine Supported (Recommended)
+            </span>
+            <p>
+              Groq delivers <strong>sub-second question generation</strong> and strict JSON adherence using <strong>LLaMA 3.3 70B Versatile</strong>. You can get a free API key at{' '}
+              <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer" className="text-indigo-600 font-bold underline inline-flex items-center gap-0.5">
+                console.groq.com/keys <ExternalLink className="w-3 h-3" />
+              </a>.
+            </p>
           </div>
         </div>
 
@@ -87,33 +98,68 @@ export default function Settings() {
             <h3 className="text-sm font-bold text-slate-900">LLM Provider Selection</h3>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-            {['gemini', 'openai', 'claude', 'ollama'].map((provider) => (
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
+            {[
+              { id: 'groq', label: '⚡ Groq (Fastest)' },
+              { id: 'gemini', label: 'Google Gemini' },
+              { id: 'openai', label: 'OpenAI GPT-4' },
+              { id: 'claude', label: 'Anthropic Claude' },
+              { id: 'offline', label: 'Offline Mode' }
+            ].map((provider) => (
               <button
-                key={provider}
+                key={provider.id}
                 type="button"
-                onClick={() => setForm({ ...form, llm_provider: provider })}
-                className={`py-3 rounded-xl font-bold uppercase transition border ${
-                  form.llm_provider === provider
+                onClick={() => setForm({ ...form, llm_provider: provider.id })}
+                className={`py-3 px-2 rounded-xl font-bold uppercase text-[11px] transition border text-center ${
+                  form.llm_provider === provider.id
                     ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
                     : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
                 }`}
               >
-                {provider}
+                {provider.label}
               </button>
             ))}
           </div>
 
           {/* API Key Inputs */}
-          <div className="space-y-3 pt-2 text-xs">
+          <div className="space-y-4 pt-2 text-xs">
+            {/* Groq Key & Model */}
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+              <div>
+                <label className="block text-slate-800 font-bold mb-1">
+                  ⚡ Groq API Key (Free tier at console.groq.com)
+                </label>
+                <input
+                  type="password"
+                  value={form.groq_api_key}
+                  onChange={(e) => setForm({ ...form, groq_api_key: e.target.value })}
+                  placeholder={settings.has_groq_key ? "•••••••••••••••• (Groq Key Configured)" : "gsk_..."}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">Groq Model</label>
+                <select
+                  value={form.groq_model}
+                  onChange={(e) => setForm({ ...form, groq_model: e.target.value })}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 bg-white font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                >
+                  <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile (Recommended - High Accuracy)</option>
+                  <option value="llama-3.1-8b-instant">llama-3.1-8b-instant (Ultra-Fast 800+ tokens/sec)</option>
+                  <option value="mixtral-8x7b-32768">mixtral-8x7b-32768 (32k Context)</option>
+                </select>
+              </div>
+            </div>
+
             <div>
               <label className="block text-slate-700 font-bold mb-1">Google Gemini API Key</label>
               <input
                 type="password"
                 value={form.gemini_api_key}
                 onChange={(e) => setForm({ ...form, gemini_api_key: e.target.value })}
-                placeholder={settings.has_gemini_key ? "•••••••••••••••• (API Key Configured)" : "Enter Gemini API Key (Optional)"}
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-300 font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                placeholder={settings.has_gemini_key ? "•••••••••••••••• (Gemini API Key Configured)" : "AIzaSy..."}
+                className="w-full px-3.5 py-2 rounded-xl border border-slate-300 font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
               />
             </div>
 
@@ -123,8 +169,8 @@ export default function Settings() {
                 type="password"
                 value={form.openai_api_key}
                 onChange={(e) => setForm({ ...form, openai_api_key: e.target.value })}
-                placeholder={settings.has_openai_key ? "•••••••••••••••• (API Key Configured)" : "Enter OpenAI API Key (Optional)"}
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-300 font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                placeholder={settings.has_openai_key ? "•••••••••••••••• (OpenAI API Key Configured)" : "sk-..."}
+                className="w-full px-3.5 py-2 rounded-xl border border-slate-300 font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
               />
             </div>
           </div>

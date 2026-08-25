@@ -16,11 +16,13 @@ from backend.quality_checker import quality_checker
 class LLMService:
     """
     Enhanced unified LLM service with dynamic textbook concept extraction,
-    multi-provider API integration (Gemini, OpenAI, Claude, Ollama),
+    multi-provider API integration (Groq LLaMA 3.3, Gemini, OpenAI, Claude, Ollama),
     and intelligent zero-hallucination deterministic synthesis.
     """
     def __init__(self):
         self.provider = settings.LLM_PROVIDER
+        self.groq_key = settings.GROQ_API_KEY or os.environ.get("GROQ_API_KEY", "")
+        self.groq_model = settings.GROQ_MODEL or "llama-3.3-70b-versatile"
         self.gemini_key = settings.GEMINI_API_KEY or os.environ.get("GEMINI_API_KEY", "")
         self.openai_key = settings.OPENAI_API_KEY or os.environ.get("OPENAI_API_KEY", "")
         self.anthropic_key = settings.ANTHROPIC_API_KEY or os.environ.get("ANTHROPIC_API_KEY", "")
@@ -39,7 +41,12 @@ class LLMService:
         """
         Generates a strictly grounded examination question from the given textbook passage.
         """
-        # 1. External LLM API if configured
+        # 1. External LLM APIs (Groq, Gemini, OpenAI)
+        if self.groq_key:
+            item = self._call_groq_question_gen(passage, question_type, marks, difficulty, blooms_level, question_number, section_name)
+            if item:
+                return item
+
         if self.gemini_key:
             item = self._call_gemini_question_gen(passage, question_type, marks, difficulty, blooms_level, question_number, section_name)
             if item:
@@ -61,6 +68,90 @@ class LLMService:
             section_name=section_name,
             existing_questions=existing_questions
         )
+
+    def _call_groq_question_gen(
+        self,
+        passage: QuestionSourceCitation,
+        question_type: str,
+        marks: int,
+        difficulty: str,
+        blooms_level: str,
+        question_number: int,
+        section_name: str
+    ) -> Optional[QuestionItem]:
+        prompt = f"""You are a master examination question generator strictly grounded in textbook curricula.
+You MUST generate an examination question using ONLY the textbook passage below.
+Do not hallucinate or use external concepts not supported by the passage.
+
+TEXTBOOK CONTEXT:
+Book: {passage.book_title}
+Chapter: {passage.chapter_name} (Chapter {passage.chapter_number})
+Page: {passage.page} | Section: {passage.section}
+Passage Content: "{passage.text_reference}"
+
+REQUIREMENTS:
+- Question Number: {question_number}
+- Section: {section_name}
+- Question Type: {question_type}
+- Marks: {marks}
+- Difficulty: {difficulty}
+- Bloom's Taxonomy Cognitive Level: {blooms_level}
+
+Respond in valid JSON with keys:
+{{
+  "question_text": "...",
+  "options": ["A. ...", "B. ...", "C. ...", "D. ..."] (if MCQ, otherwise null),
+  "correct_answer": "...",
+  "step_by_step_solution": "...",
+  "formula_used": "...",
+  "rubrics": ["1 mark: ...", "2 marks: ..."]
+}}"""
+        try:
+            url = "https://api.groq.com/openai/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {self.groq_key}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "model": self.groq_model or "llama-3.3-70b-versatile",
+                "messages": [
+                    {"role": "system", "content": "You are a curriculum examination question generator. Respond strictly with valid JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.2,
+                "response_format": {"type": "json_object"}
+            }
+            resp = requests.post(url, headers=headers, json=payload, timeout=12)
+            if resp.status_code == 200:
+                data = resp.json()
+                raw_json = data["choices"][0]["message"]["content"]
+                res = json.loads(raw_json)
+
+                is_valid, g_score, g_status = grounding_verifier.verify_question(
+                    res["question_text"], res["correct_answer"], passage
+                )
+
+                return QuestionItem(
+                    question_number=question_number,
+                    section_name=section_name,
+                    question_type=question_type,
+                    question_text=res["question_text"],
+                    options=res.get("options"),
+                    correct_answer=res["correct_answer"],
+                    step_by_step_solution=res.get("step_by_step_solution") or res.get("correct_answer"),
+                    formula_used=res.get("formula_used"),
+                    marks=marks,
+                    difficulty=difficulty,
+                    blooms_level=blooms_level,
+                    chapter_id=passage.chapter_id,
+                    chapter_name=passage.chapter_name,
+                    source=passage,
+                    grounding_score=g_score,
+                    grounding_status="VERIFIED" if is_valid else "WARNING"
+                )
+        except Exception as e:
+            print(f"[LLM] Groq API call error: {e}")
+        return None
 
     def _call_gemini_question_gen(
         self,
@@ -497,7 +588,73 @@ Respond in strict JSON with keys: question_text, options (list or null), correct
             for p in passages
         ])
 
-        # If external API available, call Gemini
+        # If Groq API configured, call Groq LLaMA 3.3
+        if self.groq_key:
+            prompt = f"""You are a senior curriculum master teaching assistant for '{book_title}'.
+Selected Chapter: {chapter_name}
+Book-Only Mode: {'ON (Strict)' if book_only_mode else 'OFF'}
+
+TEXTBOOK EVIDENCE:
+{context_blocks}
+
+TEACHER QUESTION:
+"{query}"
+
+INSTRUCTIONS:
+1. Structure your answer using EXACTLY these structured Markdown sections:
+   ### 📌 Overview & Core Summary
+   (Clear, direct answer to the teacher's query)
+
+   ### 📖 Key Concepts & In-Depth Explanation
+   (Detailed points directly grounded in the provided textbook passages)
+
+   ### 📐 Formulas, Definitions & Rules
+   (Key scientific laws, mathematical equations, or formal definitions)
+
+   ### 💡 Classroom Tips & Student Misconceptions
+   (Pedagogical guidance for teachers and typical exam pitfalls)
+
+   ### 📝 Classroom Practice Questions
+   (2-3 sample examination questions with brief answer keys)
+
+   ### 🎯 Textbook Grounding Reference
+   (Mention exact Book, Chapter, and Page numbers)
+
+2. If information is not in evidence, clearly state that in the Overview section.
+3. Keep the tone professional, scholarly, and structured."""
+            try:
+                url = "https://api.groq.com/openai/v1/chat/completions"
+                headers = {
+                    "Authorization": f"Bearer {self.groq_key}",
+                    "Content-Type": "application/json"
+                }
+                payload = {
+                    "model": self.groq_model or "llama-3.3-70b-versatile",
+                    "messages": [
+                        {"role": "system", "content": "You are a master curriculum teaching assistant. Format all output using the requested Markdown sections."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "temperature": 0.2
+                }
+                resp = requests.post(url, headers=headers, json=payload, timeout=15)
+                if resp.status_code == 200:
+                    ans_text = resp.json()["choices"][0]["message"]["content"]
+                    return ChatResponse(
+                        message=ans_text,
+                        sources=passages,
+                        is_grounded=True,
+                        book_id=passages[0].book_id,
+                        chapter_name=chapter_name,
+                        suggested_followups=[
+                            f"Can you provide 3 more practice questions on {passages[0].section}?",
+                            f"Explain the formula on page {passages[0].page} step by step.",
+                            "What are the common student misconceptions on this topic?"
+                        ]
+                    )
+            except Exception as e:
+                print(f"[Chat] Groq API failed: {e}")
+
+        # If Gemini API available, call Gemini
         if self.gemini_key:
             prompt = f"""You are a senior curriculum master teaching assistant for '{book_title}'.
 Selected Chapter: {chapter_name}

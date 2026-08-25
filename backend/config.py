@@ -27,8 +27,10 @@ class Settings(BaseSettings):
     CHROMA_DIR: Path = CHROMA_DIR
     DB_PATH: Path = DB_PATH
     
-    # LLM Settings
-    LLM_PROVIDER: str = "gemini"  # "gemini", "openai", "claude", "ollama", "mock"
+    # LLM Settings & Ultra-Fast Groq / Gemini / OpenAI Engine
+    LLM_PROVIDER: str = "groq"  # "groq", "gemini", "openai", "claude", "ollama", "offline"
+    GROQ_API_KEY: str = ""
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"  # "llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"
     GEMINI_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""

@@ -801,6 +801,8 @@ def list_past_paper_analyses():
 def get_settings():
     return {
         "llm_provider": settings.LLM_PROVIDER,
+        "has_groq_key": bool(settings.GROQ_API_KEY or os.environ.get("GROQ_API_KEY")),
+        "groq_model": settings.GROQ_MODEL,
         "has_gemini_key": bool(settings.GEMINI_API_KEY or os.environ.get("GEMINI_API_KEY")),
         "has_openai_key": bool(settings.OPENAI_API_KEY or os.environ.get("OPENAI_API_KEY")),
         "has_anthropic_key": bool(settings.ANTHROPIC_API_KEY or os.environ.get("ANTHROPIC_API_KEY")),
@@ -812,6 +814,12 @@ def get_settings():
 
 @app.post("/api/settings")
 def update_settings(payload: Dict[str, Any]):
+    if "groq_api_key" in payload and payload["groq_api_key"]:
+        settings.GROQ_API_KEY = payload["groq_api_key"]
+        llm_service.groq_key = payload["groq_api_key"]
+    if "groq_model" in payload and payload["groq_model"]:
+        settings.GROQ_MODEL = payload["groq_model"]
+        llm_service.groq_model = payload["groq_model"]
     if "gemini_api_key" in payload and payload["gemini_api_key"]:
         settings.GEMINI_API_KEY = payload["gemini_api_key"]
         llm_service.gemini_key = payload["gemini_api_key"]
