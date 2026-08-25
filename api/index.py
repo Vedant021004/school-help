@@ -13,16 +13,28 @@ from backend.main import app as _fastapi_app
 async def app(scope, receive, send):
     if scope["type"] == "http":
         headers = dict(scope.get("headers", []))
+
+        found_path = None
         for h in (b"x-forwarded-uri", b"x-matched-path", b"x-vercel-matched-path"):
-            val = headers.get(h, b"").decode("latin1", errors="ignore")
-            if val and not val.endswith("index.py") and not val.endswith(".py"):
-                if "?" in val:
-                    path_part, query_part = val.split("?", 1)
-                    scope["path"] = path_part
-                    scope["query_string"] = query_part.encode("latin1")
-                else:
-                    scope["path"] = val
-                break
+            raw_val = headers.get(h, b"").decode("latin1", errors="ignore").strip()
+            if raw_val:
+                p = raw_val.split("?")[0]
+                if not p.endswith("index.py") and not p.endswith(".py"):
+                    found_path = p
+                    if "?" in raw_val:
+                        scope["query_string"] = raw_val.split("?", 1)[1].encode("latin1")
+                    break
+
+        if found_path:
+            scope["path"] = found_path
+        else:
+            curr_path = scope.get("path", "")
+            if curr_path.startswith("/api/index.py"):
+                scope["path"] = curr_path[len("/api/index.py"):] or "/"
+            elif curr_path.startswith("/api/index"):
+                scope["path"] = curr_path[len("/api/index"):] or "/"
+            elif curr_path in ("/api", "/api/"):
+                scope["path"] = "/"
 
         if "raw_path" in scope:
             scope["raw_path"] = scope["path"].encode("latin1")
