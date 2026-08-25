@@ -48,6 +48,38 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def normalize_api_prefix(request, call_next):
+    """
+    Ensures routes match whether Vercel forwards with or without the /api prefix.
+    """
+    path = request.url.path
+    if not path.startswith("/api") and not path.startswith("/assets") and path not in ("/", "/index.html", "/favicon.ico"):
+        # Internally rewrite scope path so FastAPI route table matches
+        request.scope["path"] = "/api" + path
+    response = await call_next(request)
+    return response
+
+
+# ==========================================
+# 0. ROOT & HEALTH ENDPOINTS
+# ==========================================
+
+FRONTEND_DIST = settings.BASE_DIR.parent / "frontend" / "dist"
+
+@app.get("/")
+async def serve_root():
+    index_file = FRONTEND_DIST / "index.html"
+    if index_file.is_file():
+        return FileResponse(index_file)
+    return {
+        "status": "healthy",
+        "app": settings.APP_NAME,
+        "version": settings.APP_VERSION,
+        "message": "AI Teacher Assistant API is running"
+    }
+
+
 # ==========================================
 # 1. DASHBOARD & STATS API
 # ==========================================
@@ -853,9 +885,9 @@ def update_settings(payload: Dict[str, Any]):
 # 11. FRONTEND STATIC FILE SERVING
 # ==========================================
 
-FRONTEND_DIST = settings.BASE_DIR.parent / "frontend" / "dist"
-if not settings.IS_SERVERLESS and FRONTEND_DIST.exists():
-    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="static_assets")
+if FRONTEND_DIST.exists():
+    if (FRONTEND_DIST / "assets").exists():
+        app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="static_assets")
 
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
@@ -865,5 +897,8 @@ if not settings.IS_SERVERLESS and FRONTEND_DIST.exists():
         file_path = FRONTEND_DIST / full_path
         if file_path.is_file():
             return FileResponse(file_path)
-        return FileResponse(FRONTEND_DIST / "index.html")
+        index_file = FRONTEND_DIST / "index.html"
+        if index_file.is_file():
+            return FileResponse(index_file)
+        raise HTTPException(status_code=404, detail="Page not found")
 
