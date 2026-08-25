@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   MessageSquare, Send, BookOpen, Layers, ShieldCheck, Sparkles, 
   ExternalLink, ChevronRight, X, AlertCircle, HelpCircle, Check,
-  Lightbulb, RefreshCw, Globe, Search, Filter, BookMarked
+  Lightbulb, RefreshCw, Globe, Search, Filter, BookMarked,
+  CheckCircle2, BookCheck, Bookmark, FileQuestion, GraduationCap
 } from 'lucide-react';
 import { fetchBooks, fetchNcertCatalog, fetchNcertMeta, sendChatMessage } from '../api';
 
@@ -13,6 +14,175 @@ const QUICK_PROMPTS = [
   "Summarize the key concepts on page 6 of this textbook.",
   "What are common student misconceptions on this topic?"
 ];
+
+// Helper to format inline bold/italic/code in text strings
+function renderInlineFormatted(text) {
+  if (!text) return null;
+
+  // Split by inline bold **...**
+  const boldParts = text.split(/(\*\*.*?\*\*)/g);
+  return boldParts.map((bPart, bIdx) => {
+    if (bPart.startsWith('**') && bPart.endsWith('**')) {
+      const inner = bPart.slice(2, -2);
+      return <strong key={bIdx} className="font-bold text-slate-900">{inner}</strong>;
+    }
+    // Check for inline italics *...*
+    const italicParts = bPart.split(/(\*.*?\*)/g);
+    return italicParts.map((iPart, iIdx) => {
+      if (iPart.startsWith('*') && iPart.endsWith('*') && !iPart.startsWith('**')) {
+        return <em key={iIdx} className="italic text-slate-700">{iPart.slice(1, -1)}</em>;
+      }
+      // Check for inline backtick code `...`
+      const codeParts = iPart.split(/(`.*?`)/g);
+      return codeParts.map((cPart, cIdx) => {
+        if (cPart.startsWith('`') && cPart.endsWith('`')) {
+          return (
+            <code key={cIdx} className="px-1.5 py-0.5 rounded bg-slate-100 font-mono text-[11px] text-indigo-700 font-bold">
+              {cPart.slice(1, -1)}
+            </code>
+          );
+        }
+        return cPart;
+      });
+    });
+  });
+}
+
+// Dedicated Structured Message Renderer for Pedagogical Chat
+function StructuredMessageViewer({ content }) {
+  if (!content) return null;
+
+  // Check if content has structured section headers (### ...)
+  if (!content.includes('### ')) {
+    return (
+      <div className="text-xs sm:text-sm leading-relaxed text-slate-800 space-y-2 font-normal">
+        {content.split('\n').map((line, lIdx) => {
+          if (!line.trim()) return <div key={lIdx} className="h-1" />;
+          if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
+            return (
+              <div key={lIdx} className="flex items-start gap-2 pl-2">
+                <span className="text-indigo-500 font-bold mt-0.5">•</span>
+                <span>{renderInlineFormatted(line.replace(/^[-*]\s+/, ''))}</span>
+              </div>
+            );
+          }
+          return <p key={lIdx}>{renderInlineFormatted(line)}</p>;
+        })}
+      </div>
+    );
+  }
+
+  // Parse structured sections
+  const rawSections = content.split(/(?=###\s+)/g);
+
+  return (
+    <div className="space-y-4 text-xs sm:text-sm">
+      {rawSections.map((secText, secIdx) => {
+        const trimmed = secText.trim();
+        if (!trimmed) return null;
+
+        const lines = trimmed.split('\n');
+        const headerLine = lines[0].replace(/^###\s+/, '').trim();
+        const bodyLines = lines.slice(1);
+
+        // Header theme detection
+        let cardStyle = "bg-white border-slate-200 text-slate-900";
+        let headerBadgeStyle = "bg-slate-100 text-slate-800 border-slate-200";
+        let icon = <BookOpen className="w-3.5 h-3.5" />;
+
+        if (headerLine.includes('📌') || headerLine.toLowerCase().includes('overview') || headerLine.toLowerCase().includes('summary')) {
+          cardStyle = "bg-indigo-50/40 border-indigo-200/80";
+          headerBadgeStyle = "bg-indigo-100/90 text-indigo-900 border-indigo-300";
+          icon = <Sparkles className="w-3.5 h-3.5 text-indigo-600" />;
+        } else if (headerLine.includes('📖') || headerLine.toLowerCase().includes('concept') || headerLine.toLowerCase().includes('explanation')) {
+          cardStyle = "bg-blue-50/30 border-blue-200/80";
+          headerBadgeStyle = "bg-blue-100/90 text-blue-900 border-blue-300";
+          icon = <BookCheck className="w-3.5 h-3.5 text-blue-600" />;
+        } else if (headerLine.includes('📐') || headerLine.toLowerCase().includes('formula') || headerLine.toLowerCase().includes('definition') || headerLine.toLowerCase().includes('rule')) {
+          cardStyle = "bg-emerald-50/30 border-emerald-200/80";
+          headerBadgeStyle = "bg-emerald-100/90 text-emerald-900 border-emerald-300";
+          icon = <Layers className="w-3.5 h-3.5 text-emerald-600" />;
+        } else if (headerLine.includes('💡') || headerLine.toLowerCase().includes('tip') || headerLine.toLowerCase().includes('misconception')) {
+          cardStyle = "bg-amber-50/30 border-amber-200/80";
+          headerBadgeStyle = "bg-amber-100/90 text-amber-900 border-amber-300";
+          icon = <Lightbulb className="w-3.5 h-3.5 text-amber-600" />;
+        } else if (headerLine.includes('📝') || headerLine.toLowerCase().includes('practice') || headerLine.toLowerCase().includes('question')) {
+          cardStyle = "bg-purple-50/30 border-purple-200/80";
+          headerBadgeStyle = "bg-purple-100/90 text-purple-900 border-purple-300";
+          icon = <FileQuestion className="w-3.5 h-3.5 text-purple-600" />;
+        } else if (headerLine.includes('🎯') || headerLine.toLowerCase().includes('grounding') || headerLine.toLowerCase().includes('reference')) {
+          cardStyle = "bg-slate-50 border-slate-200";
+          headerBadgeStyle = "bg-emerald-50 text-emerald-800 border-emerald-200";
+          icon = <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />;
+        }
+
+        return (
+          <div
+            key={secIdx}
+            className={`p-4 rounded-xl border ${cardStyle} shadow-sm space-y-2.5 transition-all`}
+          >
+            {/* Header Badge */}
+            <div className="flex items-center gap-2">
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider border ${headerBadgeStyle}`}>
+                {icon}
+                {headerLine}
+              </span>
+            </div>
+
+            {/* Section Content */}
+            <div className="space-y-2 text-slate-800 text-xs sm:text-sm leading-relaxed pl-0.5">
+              {bodyLines.map((line, lIdx) => {
+                const trimmedLine = line.trim();
+                if (!trimmedLine) return null;
+
+                // Bullet point
+                if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ')) {
+                  const bulletContent = trimmedLine.replace(/^[-*]\s+/, '');
+                  return (
+                    <div key={lIdx} className="flex items-start gap-2 pl-1 py-0.5">
+                      <span className="text-indigo-600 font-extrabold mt-0.5">•</span>
+                      <div className="flex-1">{renderInlineFormatted(bulletContent)}</div>
+                    </div>
+                  );
+                }
+
+                // Numbered list item e.g. "1. ..."
+                const numMatch = trimmedLine.match(/^(\d+)\.\s+(.*)$/);
+                if (numMatch) {
+                  const num = numMatch[1];
+                  const itemContent = numMatch[2];
+                  return (
+                    <div key={lIdx} className="flex items-start gap-2.5 pl-1 py-1">
+                      <span className="w-5 h-5 rounded-md bg-indigo-600 text-white font-bold text-[11px] flex items-center justify-center flex-shrink-0 mt-0.5">
+                        {num}
+                      </span>
+                      <div className="flex-1 font-medium">{renderInlineFormatted(itemContent)}</div>
+                    </div>
+                  );
+                }
+
+                // Blockquote e.g. "> ..."
+                if (trimmedLine.startsWith('>')) {
+                  return (
+                    <div key={lIdx} className="p-3 my-1.5 rounded-lg bg-white border-l-4 border-indigo-500 text-slate-700 text-xs italic shadow-xs">
+                      {renderInlineFormatted(trimmedLine.replace(/^>\s*/, ''))}
+                    </div>
+                  );
+                }
+
+                return (
+                  <p key={lIdx} className="font-normal">
+                    {renderInlineFormatted(trimmedLine)}
+                  </p>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function BookChat({ preselectedBookId, initialQuery }) {
   const [sourceMode, setSourceMode] = useState('my-books'); // 'my-books' | 'ncert-all'
@@ -129,12 +299,6 @@ export default function BookChat({ preselectedBookId, initialQuery }) {
     return ['All Subjects', ...subjs];
   }, [ncertClassFilter, ncertMeta]);
 
-  const handleSelectNcertBook = (ncertBook) => {
-    const bookId = `ncert-${ncertBook.code}`;
-    setSelectedBookId(bookId);
-    setSelectedChapterId('');
-  };
-
   const handleSendMessage = async (queryText) => {
     const textToSend = queryText || inputQuery;
     if (!textToSend.trim() || !selectedBookId) return;
@@ -173,7 +337,7 @@ export default function BookChat({ preselectedBookId, initialQuery }) {
     } catch (err) {
       const errorMsg = {
         role: 'assistant',
-        content: `Error: ${err.message}. Please verify your textbook selection.`,
+        content: `### ⚠️ Notice\nError: ${err.message}. Please verify your textbook selection.`,
         sources: [],
         is_grounded: false,
         timestamp: new Date().toISOString()
@@ -382,7 +546,7 @@ export default function BookChat({ preselectedBookId, initialQuery }) {
                   Chat with {activeBook?.title || 'Selected Textbook'}
                 </h3>
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  Ask definitions, chapter summaries, formulas, or generate custom examination questions. In <strong>Book-Only Mode</strong>, the assistant answers strictly from this curriculum textbook.
+                  Ask definitions, chapter summaries, formulas, or generate custom examination questions. In <strong>Book-Only Mode</strong>, the assistant answers strictly with structured curriculum sections.
                 </p>
 
                 <div className="space-y-2 pt-2">
@@ -408,19 +572,23 @@ export default function BookChat({ preselectedBookId, initialQuery }) {
                   className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
                 >
                   <div
-                    className={`max-w-2xl rounded-2xl p-4 space-y-3 ${
+                    className={`max-w-3xl rounded-2xl p-4 space-y-3 ${
                       msg.role === 'user'
                         ? 'bg-indigo-600 text-white rounded-br-none shadow-sm'
-                        : 'bg-slate-50 border border-slate-200 text-slate-900 rounded-bl-none shadow-sm'
+                        : 'bg-white border border-slate-200 text-slate-900 rounded-bl-none shadow-md'
                     }`}
                   >
-                    <p className="text-xs sm:text-sm whitespace-pre-line leading-relaxed font-medium">
-                      {msg.content}
-                    </p>
+                    {msg.role === 'user' ? (
+                      <p className="text-xs sm:text-sm font-medium whitespace-pre-line leading-relaxed">
+                        {msg.content}
+                      </p>
+                    ) : (
+                      <StructuredMessageViewer content={msg.content} />
+                    )}
 
                     {/* Source Citation Badges for Assistant */}
                     {msg.role === 'assistant' && msg.sources && msg.sources.length > 0 && (
-                      <div className="pt-2 border-t border-slate-200 space-y-1.5">
+                      <div className="pt-3 border-t border-slate-100 space-y-1.5">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
                           Verified Textbook Sources:
                         </span>
@@ -429,7 +597,7 @@ export default function BookChat({ preselectedBookId, initialQuery }) {
                             <button
                               key={sIdx}
                               onClick={() => setActiveCitationDrawer(src)}
-                              className="text-[11px] bg-white border border-slate-200 hover:border-indigo-400 text-indigo-700 px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 shadow-sm transition"
+                              className="text-[11px] bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 text-indigo-700 px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 shadow-xs transition"
                             >
                               <BookOpen className="w-3 h-3 text-indigo-500" />
                               Ch {src.chapter_number} • Page {src.page} ({src.section})
@@ -442,12 +610,12 @@ export default function BookChat({ preselectedBookId, initialQuery }) {
 
                   {/* Follow-up Prompts */}
                   {msg.role === 'assistant' && msg.suggested_followups && msg.suggested_followups.length > 0 && idx === messages.length - 1 && (
-                    <div className="flex flex-wrap gap-2 mt-2 max-w-2xl">
+                    <div className="flex flex-wrap gap-2 mt-2 max-w-3xl">
                       {msg.suggested_followups.map((fUp, fIdx) => (
                         <button
                           key={fIdx}
                           onClick={() => handleSendMessage(fUp)}
-                          className="text-[11px] bg-indigo-50/70 hover:bg-indigo-100 text-indigo-700 px-2.5 py-1 rounded-lg border border-indigo-200 font-semibold transition flex items-center gap-1"
+                          className="text-[11px] bg-indigo-50/80 hover:bg-indigo-100 text-indigo-700 px-2.5 py-1 rounded-lg border border-indigo-200 font-semibold transition flex items-center gap-1 shadow-xs"
                         >
                           <Sparkles className="w-3 h-3 text-indigo-500" />
                           {fUp}
@@ -460,9 +628,9 @@ export default function BookChat({ preselectedBookId, initialQuery }) {
             )}
 
             {isSending && (
-              <div className="flex items-center gap-3 text-slate-400 text-xs italic">
-                <div className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></div>
-                <span>Retrieving verified context from {activeBook?.title || 'textbook'}...</span>
+              <div className="flex items-center gap-3 text-indigo-600 text-xs font-semibold p-3 bg-indigo-50/50 rounded-xl border border-indigo-100 max-w-md animate-pulse">
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                <span>Retrieving & synthesizing structured textbook context...</span>
               </div>
             )}
 
@@ -478,7 +646,7 @@ export default function BookChat({ preselectedBookId, initialQuery }) {
               onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
               placeholder={
                 activeBook 
-                  ? `Ask anything about ${activeBook.title}...` 
+                  ? `Ask definitions, explanations, practice questions about ${activeBook.title}...` 
                   : "Select a textbook to begin chatting..."
               }
               className="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white shadow-sm"

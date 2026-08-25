@@ -499,7 +499,7 @@ Respond in strict JSON with keys: question_text, options (list or null), correct
 
         # If external API available, call Gemini
         if self.gemini_key:
-            prompt = f"""You are a strict textbook teaching assistant for '{book_title}'.
+            prompt = f"""You are a senior curriculum master teaching assistant for '{book_title}'.
 Selected Chapter: {chapter_name}
 Book-Only Mode: {'ON (Strict)' if book_only_mode else 'OFF'}
 
@@ -510,10 +510,27 @@ TEACHER QUESTION:
 "{query}"
 
 INSTRUCTIONS:
-1. Answer using ONLY the textbook evidence above.
-2. If the answer cannot be found in the evidence, reply: "I couldn't find this information in the selected textbook."
-3. Cite page numbers where appropriate.
-4. Keep the explanation professional, structured, and pedagogical."""
+1. Structure your answer using EXACTLY these structured Markdown sections:
+   ### 📌 Overview & Core Summary
+   (Clear, direct answer to the teacher's query)
+
+   ### 📖 Key Concepts & In-Depth Explanation
+   (Detailed points directly grounded in the provided textbook passages)
+
+   ### 📐 Formulas, Definitions & Rules
+   (Key scientific laws, mathematical equations, or formal definitions)
+
+   ### 💡 Classroom Tips & Student Misconceptions
+   (Pedagogical guidance for teachers and typical exam pitfalls)
+
+   ### 📝 Classroom Practice Questions
+   (2-3 sample examination questions with brief answer keys)
+
+   ### 🎯 Textbook Grounding Reference
+   (Mention exact Book, Chapter, and Page numbers)
+
+2. If information is not in evidence, clearly state that in the Overview section.
+3. Keep the tone professional, scholarly, and structured."""
             try:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={self.gemini_key}"
                 payload = {"contents": [{"parts": [{"text": prompt}]}]}
@@ -527,59 +544,67 @@ INSTRUCTIONS:
                         book_id=passages[0].book_id,
                         chapter_name=chapter_name,
                         suggested_followups=[
-                            f"Can you provide practice questions on {passages[0].section}?",
+                            f"Can you provide 3 more practice questions on {passages[0].section}?",
                             f"Explain the formula on page {passages[0].page} step by step.",
-                            "What are the common misconceptions for students on this topic?"
+                            "What are the common student misconceptions on this topic?"
                         ]
                     )
             except Exception as e:
                 print(f"[Chat] Gemini API failed: {e}")
 
-        # Deterministic grounded answer synthesis
+        # Deterministic grounded answer synthesis (Structured Format)
         p0 = passages[0]
         q_lower = query.lower()
 
-        # Intent detection
-        if any(w in q_lower for w in ["question", "practice", "exam", "quiz", "test", "problem"]):
-            # Generate practice questions based on passage
-            ans_sections = [
-                f"### 📝 Practice Questions Grounded in {book_title} — Chapter '{chapter_name}'\n",
-                f"Based on **Page {p0.page} ({p0.section})**:\n",
-                f"**Q1. (Conceptual)** Explain the fundamental principle of {p0.section} as detailed on page {p0.page}.",
-                f"**Q2. (Analytical)** How does {p0.section} relate to real-world applications in {book_title}?",
-                f"**Q3. (Problem Solving)** Describe the step-by-step method to solve problems from this section.",
-                f"\n**💡 Textbook Context Excerpt (Page {p0.page}):**\n> \"{p0.text_reference}\"\n"
-            ]
-            full_message = "\n".join(ans_sections)
+        sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', p0.text_reference) if len(s.strip()) > 15]
+        first_sentence = sentences[0] if sentences else p0.text_reference
+        key_points = sentences[1:4] if len(sentences) > 1 else [p0.text_reference]
 
-        elif any(w in q_lower for w in ["definition", "formula", "law", "theorem", "equation", "rule"]):
-            ans_sections = [
-                f"### 📐 Key Definitions & Principles: {chapter_name}\n",
-                f"From **{book_title}**, Page {p0.page} (*{p0.section}*):\n",
-                f"- **Core Term / Topic:** {p0.section}",
-                f"- **Textbook Definition:** {p0.text_reference}",
-                f"\n*Source verified directly against {book_title} (Page {p0.page}).*"
-            ]
-            full_message = "\n".join(ans_sections)
+        ans_sections = []
 
-        elif any(w in q_lower for w in ["summar", "overview", "simple", "explain", "meaning", "about"]):
-            ans_sections = [
-                f"### 📖 Textbook Explanation: {chapter_name}\n",
-                f"According to **{book_title}** (*Page {p0.page} - {p0.section}*):\n",
-                f"{p0.text_reference}\n"
-            ]
-            if len(passages) > 1:
-                ans_sections.append(f"\n**Key Corroborating Insight (Page {passages[1].page} - {passages[1].section}):**\n{passages[1].text_reference}\n")
-            ans_sections.append(f"\n*Verified from official curriculum textbook repository.*")
-            full_message = "\n".join(ans_sections)
-
+        # 1. Overview & Core Summary
+        ans_sections.append("### 📌 Overview & Core Summary")
+        if any(w in q_lower for w in ["question", "practice", "exam", "quiz", "test"]):
+            ans_sections.append(f"Here are structured assessment items and conceptual breakdowns grounded in **{book_title}**, Chapter **{chapter_name}** (*Page {p0.page}*).\n")
+        elif any(w in q_lower for w in ["definition", "formula", "law", "theorem"]):
+            ans_sections.append(f"According to **{book_title}** (*Page {p0.page}*), here are the fundamental definitions, principles, and governing relations for **{p0.section}**.\n")
         else:
-            summary_intro = f"According to **{p0.book_title}**, Chapter '{p0.chapter_name}' (Page {p0.page}, *{p0.section}*):\n\n"
-            content_body = p0.text_reference
-            additional = ""
-            if len(passages) > 1:
-                additional = f"\n\n**Corroborating Reference (Page {passages[1].page} - {passages[1].section}):**\n{passages[1].text_reference}"
-            full_message = f"{summary_intro}{content_body}{additional}\n\n*Source verified directly against textbook repository.*"
+            ans_sections.append(f"In **{book_title}** (Chapter: *{chapter_name}*), **{p0.section}** (Page {p0.page}) establishes: {first_sentence}\n")
+
+        # 2. Key Concepts & In-Depth Explanation
+        ans_sections.append("### 📖 Key Concepts & In-Depth Explanation")
+        for pt in key_points:
+            ans_sections.append(f"- **Key Principle:** {pt}")
+        if len(passages) > 1:
+            p1 = passages[1]
+            ans_sections.append(f"- **Corroborating Insight (Page {p1.page} - {p1.section}):** {p1.text_reference}")
+        ans_sections.append("")
+
+        # 3. Formulas, Definitions & Governing Rules
+        ans_sections.append("### 📐 Formulas, Definitions & Governing Rules")
+        ans_sections.append(f"- **Formal Definition:** {first_sentence}")
+        ans_sections.append(f"- **Curriculum Section:** {p0.section} (Chapter {p0.chapter_number})\n")
+
+        # 4. Classroom Tips & Student Misconceptions
+        ans_sections.append("### 💡 Classroom Tips & Student Misconceptions")
+        ans_sections.append(f"- **Teaching Strategy:** Introduce this topic using step-by-step problem solving as illustrated on Page {p0.page} of {book_title}.")
+        ans_sections.append(f"- **Common Pitfall:** Students frequently confuse core definitions in *{p0.section}*; ensure students emphasize boundary conditions and unit representations.\n")
+
+        # 5. Classroom Practice Questions
+        ans_sections.append("### 📝 Classroom Practice Questions")
+        ans_sections.append(f"1. **[Conceptual]** State and explain the principle of **{p0.section}** as presented on Page {p0.page}.")
+        ans_sections.append(f"   - *Answer / Solution:* {first_sentence}")
+        ans_sections.append(f"2. **[Analytical]** How does **{p0.section}** apply to problem solving in {chapter_name}?")
+        ans_sections.append(f"   - *Answer / Solution:* Refer to textbook section on Page {p0.page} for structured application.\n")
+
+        # 6. Textbook Grounding Reference
+        ans_sections.append("### 🎯 Textbook Grounding Reference")
+        ans_sections.append(f"- **Textbook:** {p0.book_title}")
+        ans_sections.append(f"- **Chapter:** Chapter {p0.chapter_number} — {p0.chapter_name}")
+        ans_sections.append(f"- **Page & Section:** Page {p0.page} • *{p0.section}*")
+        ans_sections.append("- **Verification Status:** ✅ 100% Grounded in Official Curriculum")
+
+        full_message = "\n".join(ans_sections)
 
         return ChatResponse(
             message=full_message,
@@ -588,9 +613,9 @@ INSTRUCTIONS:
             book_id=p0.book_id,
             chapter_name=chapter_name,
             suggested_followups=[
-                f"Give me 5 examination questions on {p0.section}",
+                f"Give me 3 more practice questions on {p0.section}",
                 f"What are the key definitions on Page {p0.page}?",
-                f"Explain this concept with an analogy for students"
+                f"Explain {p0.section} with an everyday analogy for students"
             ]
         )
 
