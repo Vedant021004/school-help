@@ -45,10 +45,10 @@ def test_formats_list():
 
 
 def test_generate_paper_and_answer_key():
-    # 1. Get first book and its first two chapters
+    # 1. Get Science book and its first two chapters
     books_resp = client.get("/api/books")
     books = books_resp.json()
-    book = books[0]
+    book = next((b for b in books if b["id"] == "book-sci-10"), books[0])
     chapter_ids = [c["id"] for c in book["chapters"][:2]]
 
     formats_resp = client.get("/api/formats")
@@ -101,7 +101,7 @@ def test_generate_paper_and_answer_key():
 
 def test_book_chatbot():
     books = client.get("/api/books").json()
-    book = books[0]
+    book = next((b for b in books if b["id"] == "book-sci-10"), books[0])
     chap = book["chapters"][0]
 
     chat_payload = {
@@ -117,6 +117,26 @@ def test_book_chatbot():
     assert "message" in chat_data
     assert len(chat_data["sources"]) > 0
     assert chat_data["sources"][0]["chapter_id"] == chap["id"]
+
+
+def test_anti_hallucination_book_only_mode():
+    books = client.get("/api/books").json()
+    math_book = next((b for b in books if b["id"] == "book-math-8"), books[0])
+
+    # Ask about organic photosynthesis in a Mathematics textbook
+    chat_payload = {
+        "book_id": math_book["id"],
+        "chapter_id": math_book["chapters"][0]["id"],
+        "message": "Explain dark reaction in chloroplasts during photosynthesis",
+        "book_only_mode": True
+    }
+
+    chat_resp = client.post("/api/chat", json=chat_payload)
+    assert chat_resp.status_code == 200
+    chat_data = chat_resp.json()
+    # Must refuse to hallucinate biology in a math textbook!
+    assert "couldn't find this information in the selected textbook" in chat_data["message"].lower() or len(chat_data["sources"]) == 0
+
 
 
 def test_question_bank():

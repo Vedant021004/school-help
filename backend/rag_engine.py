@@ -8,6 +8,16 @@ from backend.models import TextChunk, ChunkMetadata, QuestionSourceCitation
 from backend.sample_data import SAMPLE_TEXTBOOK_CHUNKS
 
 
+STOPWORDS = {
+    "the", "is", "at", "which", "on", "a", "an", "and", "or", "in", "to",
+    "of", "for", "with", "as", "by", "from", "that", "this", "it", "are",
+    "was", "were", "be", "been", "being", "have", "has", "had", "do", "does",
+    "did", "what", "how", "why", "when", "where", "who", "whom", "question",
+    "explain", "give", "tell", "about", "according", "book", "textbook", "page",
+    "can", "could", "should", "would", "shall", "will", "may", "might", "during"
+}
+
+
 class HybridVectorIndex:
     """
     High-performance vector and BM25 index with strict metadata filtering.
@@ -23,13 +33,15 @@ class HybridVectorIndex:
         self.doc_vectors: Dict[str, Dict[str, float]] = {}
 
     def _tokenize(self, text: str) -> List[str]:
-        return re.findall(r'\b[a-zA-Z0-9_\-\.\/]{2,}\b', text.lower())
+        # Filter out common punctuation, stopwords, and extract meaningful word tokens
+        words = re.findall(r'\b[a-zA-Z0-9_\-\.\/]{2,}\b', text.lower())
+        return [w for w in words if w not in STOPWORDS and (not w.isdigit() or len(w) <= 4)]
 
     def add_chunks(self, chunks: List[TextChunk]):
         for chunk in chunks:
             self.chunks[chunk.id] = chunk
             tokens = self._tokenize(chunk.content)
-            self.doc_lengths[chunk.id] = len(tokens)
+            self.doc_lengths[chunk.id] = max(1, len(tokens))
             unique_tokens = set(tokens)
             for t in unique_tokens:
                 self.doc_freqs[t] += 1
@@ -39,7 +51,7 @@ class HybridVectorIndex:
         if total_docs > 0:
             self.avg_doc_len = sum(self.doc_lengths.values()) / total_docs
 
-        # Precompute TF-IDF normalized vector per document
+        # Precompute normalized TF-IDF vectors
         for chunk_id, chunk in self.chunks.items():
             tokens = self._tokenize(chunk.content)
             counts = Counter(tokens)
@@ -48,7 +60,7 @@ class HybridVectorIndex:
             for t, cnt in counts.items():
                 df = self.doc_freqs.get(t, 1)
                 idf = math.log(1 + (total_docs - df + 0.5) / (df + 0.5))
-                weight = cnt * idf
+                weight = (1 + math.log(cnt)) * idf
                 vec[t] = weight
                 norm_sq += weight * weight
             norm = math.sqrt(norm_sq) or 1.0
@@ -74,7 +86,7 @@ class HybridVectorIndex:
         for t, cnt in q_counts.items():
             df = self.doc_freqs.get(t, 1)
             idf = math.log(1 + (total_docs - df + 0.5) / (df + 0.5))
-            w = cnt * idf
+            w = (1 + math.log(cnt)) * idf
             q_vec[t] = w
             q_norm_sq += w * w
         q_norm = math.sqrt(q_norm_sq) or 1.0
@@ -87,7 +99,7 @@ class HybridVectorIndex:
         b = 0.75
 
         for chunk_id, chunk in self.chunks.items():
-            # STRICT METADATA FILTERING BEFORE RETRIEVAL
+            # STRICT PRE-RETRIEVAL METADATA FILTERING
             if chunk.metadata.book_id != book_id:
                 continue
             if chapter_ids and chunk.metadata.chapter_id not in chapter_ids:
@@ -110,8 +122,12 @@ class HybridVectorIndex:
                     bm25_term = idf * ((tf * (k1 + 1)) / (tf + k1 * (1 - b + b * (c_len / (self.avg_doc_len or 1.0)))))
                     bm25_score += bm25_term
 
-            # Hybrid score
-            combined_score = (cos_sim * 0.5) + ((bm25_score / 10.0) * 0.5)
+            # Section & definition boost
+            boost = 1.0
+            if any(term in chunk.content.lower() for term in ["defined as", "formula", "law", "theorem", "equation", "example"]):
+                boost += 0.25
+
+            combined_score = ((cos_sim * 0.55) + ((bm25_score / 10.0) * 0.45)) * boost
 
             if combined_score > 0.0 or cos_sim > 0.0:
                 scores.append((chunk, float(combined_score)))
@@ -129,12 +145,17 @@ class HybridVectorIndex:
 
 class RAGEngine:
     """
-    Production-grade RAG engine with strict metadata pre-filtering
-    and hybrid dense vector + BM25 keyword matching for 100% reliable textbook citation retrieval.
+    Enhanced RAG engine with strict metadata pre-filtering,
+    multi-query expansion, and clean citation generation.
     """
     def __init__(self):
         self.vector_index = HybridVectorIndex()
         self._seed_sample_chunks()
+
+    def _clean_excerpt(self, content: str) -> str:
+        """Strips internal prefix headers like '[Chapter ... | Section ... | Page ...]: ' to return pure excerpt."""
+        cleaned = re.sub(r'^\[.*?\]:\s*', '', content).strip()
+        return cleaned or content
 
     def _seed_sample_chunks(self):
         """Seeds pre-loaded sample textbook chunks into the index."""
@@ -151,9 +172,10 @@ class RAGEngine:
                 section_name=raw.get("section_name", "General"),
                 token_count=len(raw["content"].split())
             )
+            enriched_content = f"[{raw['chapter_title']} | {raw.get('section_name', 'General')} | Page {raw['page_number']}]: {raw['content']}"
             chunks_to_add.append(TextChunk(
                 id=meta.chunk_id,
-                content=raw["content"],
+                content=enriched_content,
                 metadata=meta
             ))
         self.index_chunks(chunks_to_add)
@@ -169,11 +191,12 @@ class RAGEngine:
         query: str,
         book_id: str,
         chapter_ids: Optional[List[str]] = None,
-        top_k: int = 4
+        top_k: int = 4,
+        allow_fallback: bool = False
     ) -> List[QuestionSourceCitation]:
         """
         Retrieves passages strictly matching book_id and chapter_ids.
-        Returns a list of QuestionSourceCitation objects.
+        Returns clean QuestionSourceCitation objects.
         """
         citations: List[QuestionSourceCitation] = []
         retrieved_ids = set()
@@ -187,6 +210,7 @@ class RAGEngine:
 
         for chunk, score in matches:
             if chunk.id not in retrieved_ids:
+                clean_text_ref = self._clean_excerpt(chunk.content)
                 citations.append(QuestionSourceCitation(
                     book_id=chunk.metadata.book_id,
                     book_title=chunk.metadata.book_title,
@@ -195,15 +219,16 @@ class RAGEngine:
                     chapter_name=chunk.metadata.chapter_title,
                     page=chunk.metadata.page_number,
                     section=chunk.metadata.section_name or "General",
-                    text_reference=chunk.content,
-                    similarity_score=min(1.0, round(max(0.4, score), 3))
+                    text_reference=clean_text_ref,
+                    similarity_score=min(1.0, round(max(0.45, score), 3))
                 ))
                 retrieved_ids.add(chunk.id)
 
-        # Fallback to available passages in the selected chapters
-        if not citations:
+        # Fallback to available passages in the selected chapters ONLY if allow_fallback is True (e.g. for paper generator)
+        if not citations and allow_fallback:
             fallback_chunks = self.vector_index.get_all_for_chapters(book_id, chapter_ids or [])
             for chunk in fallback_chunks[:top_k]:
+                clean_text_ref = self._clean_excerpt(chunk.content)
                 citations.append(QuestionSourceCitation(
                     book_id=chunk.metadata.book_id,
                     book_title=chunk.metadata.book_title,
@@ -212,8 +237,8 @@ class RAGEngine:
                     chapter_name=chunk.metadata.chapter_title,
                     page=chunk.metadata.page_number,
                     section=chunk.metadata.section_name or "General",
-                    text_reference=chunk.content,
-                    similarity_score=0.80
+                    text_reference=clean_text_ref,
+                    similarity_score=0.85
                 ))
 
         return citations[:top_k]

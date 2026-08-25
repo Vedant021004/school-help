@@ -309,7 +309,8 @@ def generate_question_paper(req: QuestionPaperGenerationRequest):
                 query=f"{target_chap.title} {section.question_type} {blooms_level}",
                 book_id=req.book_id,
                 chapter_ids=[target_chap.id],
-                top_k=3
+                top_k=3,
+                allow_fallback=True
             )
 
             if not passages:
@@ -318,7 +319,8 @@ def generate_question_paper(req: QuestionPaperGenerationRequest):
                     query=target_chap.title,
                     book_id=req.book_id,
                     chapter_ids=[target_chap.id],
-                    top_k=2
+                    top_k=2,
+                    allow_fallback=True
                 )
 
             active_passage = passages[0] if passages else QuestionSourceCitation(
@@ -516,7 +518,8 @@ def regenerate_single_question(
         query=f"{current_q.chapter_name} {current_q.question_type}",
         book_id=paper.book_id,
         chapter_ids=[current_q.chapter_id],
-        top_k=3
+        top_k=3,
+        allow_fallback=True
     )
     active_passage = passages[0] if passages else current_q.source
 
