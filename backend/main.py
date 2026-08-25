@@ -739,7 +739,10 @@ def export_paper_docx(paper_id: str):
 # 7. BOOK CHATBOT API
 # ==========================================
 
+@app.post("/api/chat", response_model=ChatResponse)
+@app.post("/chat", response_model=ChatResponse)
 @router.post("/chat", response_model=ChatResponse)
+@router.post("/chat/", response_model=ChatResponse)
 def chat_with_book_endpoint(req: ChatRequest):
     """
     Chat with Book endpoint with strict RAG and Book-Only Mode toggle.
