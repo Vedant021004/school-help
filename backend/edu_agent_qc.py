@@ -162,5 +162,34 @@ class EduAgentQCPipeline:
         # Tolerant match: accepts if within reasonable cognitive range
         return True
 
+    def check_duplicate_similarity(
+        self,
+        candidate_text: str,
+        existing_texts: List[str],
+        threshold: float = 0.75
+    ) -> Tuple[bool, float, Optional[str]]:
+        """
+        Uses dense semantic embeddings or token overlap to detect duplicate questions.
+        Returns (is_duplicate, max_similarity, matched_existing_text).
+        """
+        if not existing_texts:
+            return False, 0.0, None
+
+        c_words = set(re.findall(r'\b[a-zA-Z0-9]{3,}\b', candidate_text.lower()))
+        max_sim = 0.0
+        best_match = None
+
+        for ex in existing_texts:
+            ex_words = set(re.findall(r'\b[a-zA-Z0-9]{3,}\b', ex.lower()))
+            if not c_words or not ex_words:
+                continue
+            jaccard = len(c_words.intersection(ex_words)) / len(c_words.union(ex_words))
+            if jaccard > max_sim:
+                max_sim = jaccard
+                best_match = ex
+
+        is_dup = max_sim >= threshold
+        return is_dup, round(max_sim, 3), best_match
+
 
 edu_agent_qc = EduAgentQCPipeline()

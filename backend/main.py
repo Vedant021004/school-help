@@ -1009,6 +1009,28 @@ def update_settings(payload: Dict[str, Any]):
 
 
 # ==========================================
+# 10B. OPEN-SOURCE MODEL MANAGER & BENCHMARK API
+# ==========================================
+
+@router.get("/models/health")
+def get_models_health():
+    from backend.model_manager import model_manager
+    return model_manager.health_check()
+
+
+@router.get("/models/registry")
+def get_models_registry():
+    from backend.model_manager import SPECIALIZED_MODELS
+    return SPECIALIZED_MODELS
+
+
+@router.post("/models/benchmark")
+def run_model_benchmark():
+    from backend.benchmark_suite import benchmark_suite
+    return benchmark_suite.run_full_benchmark()
+
+
+# ==========================================
 # 11. AI TEACHER COPILOT API
 # ==========================================
 

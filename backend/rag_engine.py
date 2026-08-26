@@ -398,6 +398,13 @@ class RAGEngine:
                     similarity_score=0.85
                 ))
 
+        # Cross-Encoder Reranking via ModelManager
+        if citations:
+            from backend.model_manager import model_manager
+            passage_dicts = [{"citation": c, "content": c.text_reference, "score": c.similarity_score} for c in citations]
+            reranked = model_manager.rerank_passages(query, passage_dicts, top_k=top_k)
+            citations = [item["citation"] for item in reranked if "citation" in item]
+
         return citations[:top_k]
 
     def get_chapter_passages(self, book_id: str, chapter_id: str) -> List[TextChunk]:
