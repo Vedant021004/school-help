@@ -18,8 +18,8 @@ export default function NcertStudyNotes({ onNavigate }) {
   const [selectedMedium, setSelectedMedium] = useState('english');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // View Mode: 'pdf' (Real PDF Document Preview) | 'notes' (On-Screen Interactive Notes)
-  const [viewMode, setViewMode] = useState('pdf');
+  // View Mode: 'notes' (On-Screen Interactive Notes) | 'pdf' (Real PDF Document Preview)
+  const [viewMode, setViewMode] = useState('notes');
 
   // Note Content State
   const [noteData, setNoteData] = useState(null);
@@ -508,20 +508,30 @@ export default function NcertStudyNotes({ onNavigate }) {
           </div>
 
           {viewMode === 'pdf' ? (
-            /* REAL PDF EMBED PREVIEW */
-            <div className="bg-white rounded-3xl border border-slate-200 p-4 shadow-sm space-y-3">
-              <div className="flex items-center justify-between px-2">
+            /* REAL PDF VISUAL DOCUMENT CANVAS */
+            <div className="space-y-6">
+              {/* Document Actions Bar */}
+              <div className="bg-white rounded-3xl border border-slate-200 p-4 shadow-sm flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse" />
                   <span className="text-xs font-black text-slate-900">
-                    Real PDF Preview: {selectedClass} {selectedSubject} • {selectedChapter}
+                    Printable PDF Document: {selectedClass} {selectedSubject} • {selectedChapter}
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
+                  <a
+                    href={pdfStreamUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3.5 py-1.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-bold transition flex items-center gap-1.5"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Open Raw PDF</span>
+                  </a>
                   <a
                     href={pdfStreamUrl}
                     download
-                    className="text-xs font-bold text-red-600 hover:text-red-700 flex items-center gap-1"
+                    className="px-4 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 text-xs font-bold shadow-md shadow-red-100 flex items-center gap-1.5 transition"
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>Download Official PDF</span>
@@ -529,13 +539,92 @@ export default function NcertStudyNotes({ onNavigate }) {
                 </div>
               </div>
 
-              {/* Embedded PDF iframe */}
-              <div className="w-full h-[780px] rounded-2xl overflow-hidden border border-slate-200 bg-slate-100 shadow-inner">
-                <iframe
-                  src={`${pdfStreamUrl}#toolbar=1&navpanes=1&scrollbar=1`}
-                  title="NCERTStudy Notes PDF Preview"
-                  className="w-full h-full border-0"
-                />
+              {/* A4 Styled PDF Document Sheet */}
+              <div className="bg-white rounded-3xl border-2 border-slate-300 p-8 lg:p-12 shadow-xl space-y-8 max-w-4xl mx-auto font-serif">
+                {/* Official NCERT Header */}
+                <div className="border-b-2 border-red-600 pb-6 flex items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <span className="text-[11px] font-black uppercase text-red-600 tracking-wider font-sans block">
+                      NCERTStudy.com • National Curriculum Revision Document
+                    </span>
+                    <h1 className="text-2xl lg:text-3xl font-black text-slate-900 font-sans tracking-tight">
+                      {noteData?.chapter_title || selectedChapter}
+                    </h1>
+                    <p className="text-xs font-bold text-slate-500 font-sans">
+                      {selectedClass} • {selectedSubject} • Comprehensive Board Revision Notes
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className="px-3 py-1 bg-red-50 text-red-700 border border-red-200 rounded-lg text-xs font-black font-sans">
+                      Official Curriculum
+                    </span>
+                  </div>
+                </div>
+
+                {/* Executive Summary in Document */}
+                <div className="p-5 bg-red-50/60 rounded-2xl border border-red-200 space-y-2">
+                  <span className="text-[11px] font-black uppercase text-red-800 tracking-wider font-sans block">
+                    📌 Chapter Overview & Core Examination Focus
+                  </span>
+                  <p className="text-xs lg:text-sm text-slate-800 leading-relaxed font-sans font-medium">
+                    {noteData?.executive_summary || 'Comprehensive textbook concept breakdown and governing formulas.'}
+                  </p>
+                </div>
+
+                {/* Document Sections */}
+                <div className="space-y-6">
+                  {noteData?.sections?.map((sec, idx) => (
+                    <div key={idx} className="space-y-3 border-b border-slate-100 pb-6">
+                      <div className="flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-lg bg-red-600 text-white flex items-center justify-center font-black text-xs font-sans">
+                          {idx + 1}
+                        </span>
+                        <h2 className="text-base lg:text-lg font-black text-slate-900 font-sans">{sec.title}</h2>
+                      </div>
+                      <p className="text-xs text-slate-700 leading-relaxed font-sans">{sec.summary}</p>
+                      
+                      {sec.content_paragraphs?.map((p, pIdx) => (
+                        <p key={pIdx} className="text-xs text-slate-800 leading-relaxed">{p}</p>
+                      ))}
+
+                      {sec.bullet_points && sec.bullet_points.length > 0 && (
+                        <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5 font-sans">
+                          <span className="text-[10px] font-black uppercase text-slate-500 block">High-Yield Revision Points:</span>
+                          {sec.bullet_points.map((bp, bIdx) => (
+                            <div key={bIdx} className="flex items-start gap-2 text-xs text-slate-800">
+                              <span className="text-red-600 font-bold">•</span>
+                              <span>{bp}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Formulas & Exam Points in Document */}
+                {noteData?.governing_formulas && noteData.governing_formulas.length > 0 && (
+                  <div className="p-5 bg-indigo-50/60 rounded-2xl border border-indigo-200 space-y-3 font-sans">
+                    <span className="text-xs font-black uppercase text-indigo-900 block">
+                      ⚡ Key Governing Formulas & Balanced Reactions
+                    </span>
+                    <div className="space-y-2">
+                      {noteData.governing_formulas.map((f, fIdx) => (
+                        <div key={fIdx} className="p-3 bg-white rounded-xl border border-indigo-100 text-xs">
+                          <b className="text-indigo-950 font-bold block">{f.formula_name}:</b>
+                          <code className="text-sm font-mono text-indigo-700 font-bold block pt-1">{f.equation}</code>
+                          <span className="text-[11px] text-slate-500 block pt-0.5">{f.context}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Footer of PDF Document Sheet */}
+                <div className="border-t-2 border-slate-200 pt-4 flex items-center justify-between text-[11px] text-slate-400 font-sans">
+                  <span>NCERT Study Hub • Verified Curriculum Notes</span>
+                  <span>Page 1 of Complete Unit Handout</span>
+                </div>
               </div>
             </div>
           ) : noteData ? (
