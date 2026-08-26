@@ -393,7 +393,17 @@ export default function PresentOnDeck({ deck: initialDeck, onUpdateDeck, onRegen
         {/* Dynamic Slide Content Body by Layout */}
         <div className="my-auto py-4">
           {curSlide.layout === 'title' && (
-            <div className="text-center space-y-4 max-w-3xl mx-auto">
+            <div className="text-center space-y-6 max-w-4xl mx-auto animate-in fade-in duration-700">
+              {/* Scientific Graphic Header Illustration */}
+              <div className="flex justify-center">
+                <div className="w-20 h-20 rounded-3xl bg-indigo-500/20 border-2 border-indigo-400/40 flex items-center justify-center shadow-2xl relative">
+                  <Sparkles className="w-10 h-10 text-amber-300 animate-spin" style={{ animationDuration: '12s' }} />
+                  <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-indigo-600 text-white text-[10px] font-black flex items-center justify-center animate-bounce">
+                    16:9
+                  </div>
+                </div>
+              </div>
+
               <h2 className="text-3xl lg:text-5xl font-black tracking-tight leading-tight">
                 {curSlide.title}
               </h2>
@@ -403,7 +413,7 @@ export default function PresentOnDeck({ deck: initialDeck, onUpdateDeck, onRegen
               {curSlide.bullet_points && curSlide.bullet_points.length > 0 && (
                 <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
                   {curSlide.bullet_points.map((bp, i) => (
-                    <span key={i} className={`px-4 py-1.5 rounded-full text-xs font-bold border ${currentTheme.accentBadge}`}>
+                    <span key={i} className={`px-4 py-1.5 rounded-full text-xs font-bold border shadow-lg ${currentTheme.accentBadge}`}>
                       {bp}
                     </span>
                   ))}
@@ -413,64 +423,99 @@ export default function PresentOnDeck({ deck: initialDeck, onUpdateDeck, onRegen
           )}
 
           {curSlide.layout === 'concept_split' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-              <div className="space-y-3">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center animate-in fade-in slide-in-from-bottom duration-500">
+              <div className="lg:col-span-7 space-y-3">
                 {curSlide.bullet_points?.map((bp, i) => (
-                  <div key={i} className="flex items-start gap-3 text-sm lg:text-base font-medium text-slate-200">
+                  <div key={i} className="flex items-start gap-3 p-3 rounded-2xl bg-black/30 border border-white/10 text-sm lg:text-base font-medium text-slate-200">
                     <span className={`text-lg font-bold ${currentTheme.highlightText}`}>•</span>
                     <span>{bp}</span>
                   </div>
                 ))}
               </div>
 
-              {curSlide.key_definition && (
-                <div className={`p-6 rounded-2xl border-2 backdrop-blur-md space-y-2 shadow-xl ${currentTheme.card}`}>
-                  <span className="text-[11px] font-black uppercase tracking-wider text-amber-300 block">
-                    📌 Core Definition & Takeaway
-                  </span>
-                  <p className="text-sm lg:text-base font-medium leading-relaxed font-serif">
-                    {curSlide.key_definition}
-                  </p>
+              <div className="lg:col-span-5 space-y-4">
+                {/* SVG Visual Graphic */}
+                <div className="p-4 rounded-2xl bg-black/40 border border-white/10 flex items-center justify-center">
+                  <svg className="w-32 h-32 text-indigo-400 animate-pulse" viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="50" cy="50" r="35" strokeDasharray="4 4" className="animate-spin" style={{ transformOrigin: 'center', animationDuration: '20s' }} />
+                    <circle cx="50" cy="50" r="20" className="text-amber-400" strokeWidth="3" />
+                    <line x1="50" y1="15" x2="50" y2="85" strokeWidth="1.5" />
+                    <line x1="15" y1="50" x2="85" y2="50" strokeWidth="1.5" />
+                    <circle cx="50" cy="15" r="4" fill="currentColor" />
+                    <circle cx="85" cy="50" r="4" fill="currentColor" />
+                    <circle cx="50" cy="85" r="4" fill="currentColor" />
+                    <circle cx="15" cy="50" r="4" fill="currentColor" />
+                  </svg>
                 </div>
-              )}
+
+                {curSlide.key_definition && (
+                  <div className={`p-5 rounded-2xl border-2 backdrop-blur-md space-y-2 shadow-xl ${currentTheme.card}`}>
+                    <span className="text-[11px] font-black uppercase tracking-wider text-amber-300 block">
+                      📌 Core Concept & Scope
+                    </span>
+                    <p className="text-xs lg:text-sm font-medium leading-relaxed font-serif">
+                      {curSlide.key_definition}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
           {curSlide.layout === 'step_flow' && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {(curSlide.steps || [
-                { step: '1', title: 'Reactants', desc: 'Initial state input' },
-                { step: '2', title: 'Transition', desc: 'Bond breaking & energy transformation' },
-                { step: '3', title: 'Products', desc: 'Stable output formation' }
-              ]).map((st, i) => (
-                <div key={i} className={`p-5 rounded-2xl border backdrop-blur-md space-y-2 relative overflow-hidden ${currentTheme.stepBox}`}>
-                  <div className="w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center font-black text-sm">
-                    {st.step || i + 1}
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom duration-500">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {(curSlide.steps || [
+                  { step: '1', title: 'Reactants', desc: 'Initial state input' },
+                  { step: '2', title: 'Transition', desc: 'Bond breaking & energy transformation' },
+                  { step: '3', title: 'Products', desc: 'Stable output formation' }
+                ]).map((st, i) => (
+                  <div key={i} className={`p-6 rounded-3xl border-2 backdrop-blur-md space-y-3 relative overflow-hidden shadow-xl ${currentTheme.stepBox}`}>
+                    <div className="flex items-center justify-between">
+                      <div className="w-9 h-9 rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center font-black text-sm shadow-md">
+                        {st.step || i + 1}
+                      </div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300 bg-white/10 px-2 py-0.5 rounded">
+                        Phase {i + 1}
+                      </span>
+                    </div>
+                    <h3 className="font-black text-base lg:text-lg text-white">{st.title}</h3>
+                    <p className="text-xs lg:text-sm text-slate-300 font-medium leading-relaxed">{st.desc}</p>
                   </div>
-                  <h3 className="font-bold text-sm lg:text-base text-white">{st.title}</h3>
-                  <p className="text-xs text-slate-300 font-medium leading-relaxed">{st.desc}</p>
-                </div>
-              ))}
+                ))}
+              </div>
+
+              {/* Progress Flow Arrow Indicator */}
+              <div className="hidden md:flex items-center justify-around px-8 text-amber-400">
+                <span className="text-xs font-bold uppercase tracking-wider">Start ➔</span>
+                <span className="text-xs font-bold uppercase tracking-wider">Transformation ➔</span>
+                <span className="text-xs font-bold uppercase tracking-wider">Final Output ✓</span>
+              </div>
             </div>
           )}
 
           {curSlide.layout === 'formula_card' && (
-            <div className="space-y-4 max-w-2xl mx-auto text-center">
-              <div className={`p-6 rounded-2xl border-2 shadow-2xl space-y-2 ${currentTheme.formulaBox}`}>
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  {curSlide.formula_name || 'Governing Formula'}
+            <div className="space-y-6 max-w-3xl mx-auto text-center animate-in fade-in zoom-in-95 duration-500">
+              <div className={`p-8 rounded-3xl border-2 shadow-2xl space-y-3 relative overflow-hidden ${currentTheme.formulaBox}`}>
+                <span className="text-xs font-black uppercase tracking-wider text-slate-400 block">
+                  {curSlide.formula_name || 'Governing Equation & Scientific Law'}
                 </span>
-                <code className="text-2xl lg:text-4xl font-mono font-black text-amber-300 block py-2">
-                  {curSlide.formula || 'A + B -> C + D'}
+                <code className="text-2xl lg:text-4xl font-mono font-black text-amber-300 block py-3 tracking-wide">
+                  {curSlide.formula || 'A + B -> C + D  [ΔH < 0]'}
                 </code>
+                {curSlide.formula_units && (
+                  <span className="text-xs font-bold text-indigo-300 bg-black/40 px-3 py-1 rounded-full inline-block border border-white/10">
+                    Units: {curSlide.formula_units}
+                  </span>
+                )}
               </div>
 
               {curSlide.bullet_points && (
-                <div className="space-y-2 text-left bg-black/30 p-4 rounded-xl border border-white/10 text-xs text-slate-200">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-left">
                   {curSlide.bullet_points.map((bp, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <span className="text-amber-400 font-bold">✓</span>
-                      <span>{bp}</span>
+                    <div key={i} className="p-3.5 rounded-2xl bg-black/40 border border-white/10 text-xs text-slate-200 flex items-start gap-2">
+                      <span className="text-amber-400 font-black">✓</span>
+                      <span className="leading-snug">{bp}</span>
                     </div>
                   ))}
                 </div>
@@ -479,20 +524,40 @@ export default function PresentOnDeck({ deck: initialDeck, onUpdateDeck, onRegen
           )}
 
           {curSlide.layout === 'activity_box' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-              <div className="p-6 rounded-2xl border bg-amber-500/10 border-amber-400/30 text-amber-100 space-y-2">
-                <span className="text-xs font-black uppercase text-amber-300 block">
-                  ⚡ Classroom Experiment / Activity
-                </span>
-                <p className="text-sm font-medium leading-relaxed font-serif">
-                  {curSlide.activity_box || 'Conduct laboratory test and record observations.'}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center animate-in fade-in duration-500">
+              {/* Lab Experiment Card */}
+              <div className="md:col-span-7 p-6 rounded-3xl border-2 bg-amber-500/10 border-amber-400/40 text-amber-100 space-y-3 shadow-xl">
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-amber-400 animate-ping" />
+                  <span className="text-xs font-black uppercase text-amber-300 tracking-wider">
+                    ⚡ Classroom Experiment & Demonstration
+                  </span>
+                </div>
+                <p className="text-sm lg:text-base font-medium leading-relaxed font-serif">
+                  {curSlide.activity_box || 'Take sample in a test tube and observe reaction transitions.'}
                 </p>
+                {curSlide.activity_apparatus && (
+                  <div className="p-3 rounded-xl bg-black/40 border border-white/10 text-xs text-slate-200">
+                    <b className="text-amber-400 block pb-0.5">Required Apparatus:</b>
+                    {curSlide.activity_apparatus}
+                  </div>
+                )}
+                {curSlide.activity_inference && (
+                  <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-xs text-emerald-200">
+                    <b className="text-emerald-400 block pb-0.5">Scientific Inference:</b>
+                    {curSlide.activity_inference}
+                  </div>
+                )}
               </div>
 
-              <div className="space-y-2">
+              {/* Lab Observation Checklist */}
+              <div className="md:col-span-5 space-y-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+                  Key Experimental Observations:
+                </span>
                 {curSlide.bullet_points?.map((bp, i) => (
-                  <div key={i} className="flex items-start gap-2.5 text-xs lg:text-sm text-slate-200">
-                    <span className="text-amber-400 font-bold">•</span>
+                  <div key={i} className="flex items-start gap-2.5 p-3 rounded-2xl bg-black/40 border border-white/10 text-xs text-slate-200">
+                    <span className="text-amber-400 font-black">•</span>
                     <span>{bp}</span>
                   </div>
                 ))}

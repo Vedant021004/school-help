@@ -203,7 +203,20 @@ export default function BookChat({ preselectedBookId, initialQuery }) {
   const [bookOnlyMode, setBookOnlyMode] = useState(true);
 
   // Chat History
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState([
+    {
+      role: 'assistant',
+      content: `### 🎓 Welcome to Shiksha-AI & NCERT-Tutor\nI am your **Curriculum-Grounded AI Teaching Assistant**. I answer questions, explain complex scientific laws, derive mathematical formulas, and construct board exam rubrics strictly verified against the official NCERT curriculum.\n\n### 💡 Popular Topics to Explore:\n- **Science (Class 10):** Chemical Reactions, Acids & Bases, Life Processes, Light, Electricity\n- **Mathematics:** Quadratic Equations, Coordinate Geometry, Triangles, Trigonometry\n- **Physics & Chemistry:** Laws of Motion, Thermodynamics, Equilibrium, Organic Reactions`,
+      sources: [],
+      is_grounded: true,
+      suggested_followups: [
+        "Explain Chemical Reactions and balancing equations step-by-step.",
+        "What are the key differences between Endothermic and Exothermic processes?",
+        "Explain Photosynthesis and Stomatal regulation with balanced equations."
+      ],
+      timestamp: new Date().toISOString()
+    }
+  ]);
   const [inputQuery, setInputQuery] = useState(initialQuery || '');
   const [isSending, setIsSending] = useState(false);
 
