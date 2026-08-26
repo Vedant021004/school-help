@@ -1,7 +1,7 @@
 import os
 import tempfile
 from pathlib import Path
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -63,9 +63,7 @@ class Settings(BaseSettings):
     SIMILARITY_DUPLICATION_THRESHOLD: float = 0.82  # Cosine threshold to reject duplicate questions
     MAX_REGEN_ATTEMPTS: int = 3
     
-    class Config:
-        env_file = ".env"
-        extra = "ignore"
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
 # Global Settings Instance
