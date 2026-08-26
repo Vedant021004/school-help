@@ -1414,6 +1414,23 @@ def get_ncertstudy_notes_endpoint(payload: Dict[str, Any]):
     )
 
 
+@router.get("/ncertstudy/notes", response_model=NcertStudyCompleteNote)
+def get_ncertstudy_notes_get_endpoint(
+    class_grade: str = "Class 10",
+    subject: str = "Science",
+    chapter_title: str = "Chemical Reactions and Equations",
+    chapter_number: int = 1,
+    book_id: Optional[str] = None
+):
+    return ncert_study_notes_service.get_chapter_notes(
+        class_grade=class_grade,
+        subject=subject,
+        chapter_title=chapter_title,
+        chapter_number=chapter_number,
+        book_id=book_id
+    )
+
+
 @router.get("/ncertstudy/pdf")
 def get_ncertstudy_notes_pdf_endpoint(
     class_grade: str = "Class 10",
