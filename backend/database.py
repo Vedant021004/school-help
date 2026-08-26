@@ -5,7 +5,8 @@ from typing import List, Optional, Dict, Any
 from backend.config import settings
 from backend.models import (
     Book, Chapter, PaperFormat, QuestionPaper, AnswerKey,
-    QuestionBankItem, PastPaperAnalysis
+    QuestionBankItem, PastPaperAnalysis, KnowledgeGraph, GraphNode, GraphEdge,
+    ConceptTriple, LiveSession, StudentSubmission, ExamPatternAnalysis, ExamTopicFrequency
 )
 from backend.sample_data import SAMPLE_BOOKS, SAMPLE_FORMAT_TEMPLATES
 
@@ -140,6 +141,81 @@ def init_db():
         extracted_concepts_json TEXT,
         suggested_format_json TEXT,
         uploaded_at TEXT NOT NULL
+    )
+    """)
+
+    # Knowledge Graphs Table (KAQG)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS knowledge_graphs (
+        book_id TEXT NOT NULL,
+        chapter_id TEXT NOT NULL,
+        chapter_name TEXT NOT NULL,
+        nodes_json TEXT NOT NULL,
+        edges_json TEXT NOT NULL,
+        triples_json TEXT NOT NULL,
+        prerequisites_json TEXT NOT NULL,
+        learning_path_json TEXT NOT NULL,
+        weak_topic_cues_json TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        PRIMARY KEY (book_id, chapter_id)
+    )
+    """)
+
+    # Chapter Resources Table (Cached generated modules)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS chapter_resources (
+        id TEXT PRIMARY KEY,
+        book_id TEXT NOT NULL,
+        chapter_id TEXT NOT NULL,
+        resource_type TEXT NOT NULL,
+        content_json TEXT NOT NULL,
+        created_at TEXT NOT NULL
+    )
+    """)
+
+    # Live Classroom Sessions Table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS live_sessions (
+        room_code TEXT PRIMARY KEY,
+        teacher_name TEXT NOT NULL,
+        book_id TEXT NOT NULL,
+        chapter_id TEXT NOT NULL,
+        chapter_name TEXT NOT NULL,
+        worksheet_title TEXT NOT NULL,
+        questions_json TEXT NOT NULL,
+        is_active INTEGER DEFAULT 1,
+        created_at TEXT NOT NULL
+    )
+    """)
+
+    # Live Classroom Submissions Table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS live_submissions (
+        id TEXT PRIMARY KEY,
+        room_code TEXT NOT NULL,
+        student_name TEXT NOT NULL,
+        answers_json TEXT NOT NULL,
+        score INTEGER DEFAULT 0,
+        total_marks INTEGER DEFAULT 0,
+        accuracy_percentage REAL DEFAULT 0.0,
+        submitted_at TEXT NOT NULL
+    )
+    """)
+
+    # Exam Pattern Analyses Table (ExamRAG)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS past_paper_patterns (
+        id TEXT PRIMARY KEY,
+        subject TEXT NOT NULL,
+        grade TEXT NOT NULL,
+        board TEXT NOT NULL,
+        analyzed_papers_count INTEGER DEFAULT 1,
+        top_frequent_topics_json TEXT NOT NULL,
+        repeated_concepts_json TEXT NOT NULL,
+        under_tested_topics_json TEXT NOT NULL,
+        recommended_practice_distribution_json TEXT NOT NULL,
+        summary TEXT NOT NULL,
+        analyzed_at TEXT NOT NULL
     )
     """)
 
@@ -519,3 +595,257 @@ def save_past_paper_analysis(ppa: PastPaperAnalysis) -> PastPaperAnalysis:
     conn.commit()
     conn.close()
     return ppa
+
+
+# ==========================================
+# KNOWLEDGE GRAPHS CRUD (KAQG)
+# ==========================================
+
+def get_knowledge_graph(book_id: str, chapter_id: str) -> Optional[KnowledgeGraph]:
+    conn = get_db_connection()
+    row = conn.execute(
+        "SELECT * FROM knowledge_graphs WHERE book_id = ? AND chapter_id = ?",
+        (book_id, chapter_id)
+    ).fetchone()
+    conn.close()
+    if not row:
+        return None
+    d = dict(row)
+    nodes = [GraphNode(**n) for n in json.loads(d["nodes_json"] or "[]")]
+    edges = [GraphEdge(**e) for e in json.loads(d["edges_json"] or "[]")]
+    triples = [ConceptTriple(**t) for t in json.loads(d["triples_json"] or "[]")]
+    prerequisites = json.loads(d["prerequisites_json"] or "[]")
+    learning_path = json.loads(d["learning_path_json"] or "[]")
+    weak_topic_cues = json.loads(d["weak_topic_cues_json"] or "[]")
+    return KnowledgeGraph(
+        book_id=d["book_id"],
+        chapter_id=d["chapter_id"],
+        chapter_name=d["chapter_name"],
+        nodes=nodes,
+        edges=edges,
+        triples=triples,
+        prerequisites=prerequisites,
+        learning_path=learning_path,
+        weak_topic_cues=weak_topic_cues,
+        created_at=d["created_at"]
+    )
+
+
+def save_knowledge_graph(kg: KnowledgeGraph) -> KnowledgeGraph:
+    conn = get_db_connection()
+    conn.execute("""
+    INSERT OR REPLACE INTO knowledge_graphs (
+        book_id, chapter_id, chapter_name, nodes_json, edges_json,
+        triples_json, prerequisites_json, learning_path_json,
+        weak_topic_cues_json, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        kg.book_id, kg.chapter_id, kg.chapter_name,
+        json.dumps([n.dict() for n in kg.nodes]),
+        json.dumps([e.dict() for e in kg.edges]),
+        json.dumps([t.dict() for t in kg.triples]),
+        json.dumps(kg.prerequisites),
+        json.dumps(kg.learning_path),
+        json.dumps(kg.weak_topic_cues),
+        kg.created_at
+    ))
+    conn.commit()
+    conn.close()
+    return kg
+
+
+# ==========================================
+# CHAPTER RESOURCES CRUD
+# ==========================================
+
+def get_chapter_resource(book_id: str, chapter_id: str, resource_type: str) -> Optional[Dict[str, Any]]:
+    conn = get_db_connection()
+    row = conn.execute(
+        "SELECT * FROM chapter_resources WHERE book_id = ? AND chapter_id = ? AND resource_type = ? ORDER BY created_at DESC LIMIT 1",
+        (book_id, chapter_id, resource_type)
+    ).fetchone()
+    conn.close()
+    if not row:
+        return None
+    return json.loads(row["content_json"])
+
+
+def save_chapter_resource(resource_id: str, book_id: str, chapter_id: str, resource_type: str, content: Dict[str, Any]) -> None:
+    conn = get_db_connection()
+    conn.execute("""
+    INSERT OR REPLACE INTO chapter_resources (
+        id, book_id, chapter_id, resource_type, content_json, created_at
+    ) VALUES (?, ?, ?, ?, ?, datetime('now'))
+    """, (
+        resource_id, book_id, chapter_id, resource_type, json.dumps(content)
+    ))
+    conn.commit()
+    conn.close()
+
+
+# ==========================================
+# LIVE CLASSROOM SESSIONS CRUD
+# ==========================================
+
+def create_live_session(session: LiveSession) -> LiveSession:
+    conn = get_db_connection()
+    conn.execute("""
+    INSERT OR REPLACE INTO live_sessions (
+        room_code, teacher_name, book_id, chapter_id, chapter_name,
+        worksheet_title, questions_json, is_active, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        session.room_code, session.teacher_name, session.book_id,
+        session.chapter_id, session.chapter_name, session.worksheet_title,
+        json.dumps(session.questions), 1 if session.is_active else 0,
+        session.created_at
+    ))
+    conn.commit()
+    conn.close()
+    return session
+
+
+def get_live_session(room_code: str) -> Optional[LiveSession]:
+    conn = get_db_connection()
+    row = conn.execute(
+        "SELECT * FROM live_sessions WHERE room_code = ?",
+        (room_code,)
+    ).fetchone()
+    conn.close()
+    if not row:
+        return None
+    d = dict(row)
+    return LiveSession(
+        room_code=d["room_code"],
+        teacher_name=d["teacher_name"],
+        book_id=d["book_id"],
+        chapter_id=d["chapter_id"],
+        chapter_name=d["chapter_name"],
+        worksheet_title=d["worksheet_title"],
+        questions=json.loads(d["questions_json"] or "[]"),
+        is_active=bool(d["is_active"]),
+        created_at=d["created_at"]
+    )
+
+
+def close_live_session(room_code: str) -> bool:
+    conn = get_db_connection()
+    conn.execute("UPDATE live_sessions SET is_active = 0 WHERE room_code = ?", (room_code,))
+    conn.commit()
+    conn.close()
+    return True
+
+
+def get_active_live_sessions() -> List[LiveSession]:
+    conn = get_db_connection()
+    rows = conn.execute(
+        "SELECT * FROM live_sessions WHERE is_active = 1 ORDER BY created_at DESC LIMIT 10"
+    ).fetchall()
+    conn.close()
+    sessions = []
+    for row in rows:
+        d = dict(row)
+        sessions.append(LiveSession(
+            room_code=d["room_code"],
+            teacher_name=d["teacher_name"],
+            book_id=d["book_id"],
+            chapter_id=d["chapter_id"],
+            chapter_name=d["chapter_name"],
+            worksheet_title=d["worksheet_title"],
+            questions=json.loads(d["questions_json"] or "[]"),
+            is_active=bool(d["is_active"]),
+            created_at=d["created_at"]
+        ))
+    return sessions
+
+
+def submit_live_answer(sub: StudentSubmission) -> StudentSubmission:
+    conn = get_db_connection()
+    conn.execute("""
+    INSERT OR REPLACE INTO live_submissions (
+        id, room_code, student_name, answers_json, score, total_marks,
+        accuracy_percentage, submitted_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        sub.id, sub.room_code, sub.student_name, json.dumps(sub.answers),
+        sub.score, sub.total_marks, sub.accuracy_percentage, sub.submitted_at
+    ))
+    conn.commit()
+    conn.close()
+    return sub
+
+
+def get_live_submissions(room_code: str) -> List[StudentSubmission]:
+    conn = get_db_connection()
+    rows = conn.execute(
+        "SELECT * FROM live_submissions WHERE room_code = ? ORDER BY score DESC, submitted_at ASC",
+        (room_code,)
+    ).fetchall()
+    conn.close()
+    subs = []
+    for r in rows:
+        d = dict(r)
+        subs.append(StudentSubmission(
+            id=d["id"],
+            room_code=d["room_code"],
+            student_name=d["student_name"],
+            answers=json.loads(d["answers_json"] or "{}"),
+            score=d["score"],
+            total_marks=d["total_marks"],
+            accuracy_percentage=d["accuracy_percentage"],
+            submitted_at=d["submitted_at"]
+        ))
+    return subs
+
+
+# ==========================================
+# PAST PAPER PATTERNS CRUD (ExamRAG)
+# ==========================================
+
+def get_exam_pattern_analysis(subject: str, grade: str) -> Optional[ExamPatternAnalysis]:
+    conn = get_db_connection()
+    row = conn.execute(
+        "SELECT * FROM past_paper_patterns WHERE LOWER(subject) = LOWER(?) AND LOWER(grade) = LOWER(?) ORDER BY analyzed_at DESC LIMIT 1",
+        (subject, grade)
+    ).fetchone()
+    conn.close()
+    if not row:
+        return None
+    d = dict(row)
+    top_topics = [ExamTopicFrequency(**t) for t in json.loads(d["top_frequent_topics_json"] or "[]")]
+    return ExamPatternAnalysis(
+        id=d["id"],
+        subject=d["subject"],
+        grade=d["grade"],
+        board=d["board"],
+        analyzed_papers_count=d["analyzed_papers_count"],
+        top_frequent_topics=top_topics,
+        repeated_concepts=json.loads(d["repeated_concepts_json"] or "[]"),
+        under_tested_topics=json.loads(d["under_tested_topics_json"] or "[]"),
+        recommended_practice_distribution=json.loads(d["recommended_practice_distribution_json"] or "{}"),
+        summary=d["summary"],
+        analyzed_at=d["analyzed_at"]
+    )
+
+
+def save_exam_pattern_analysis(epa: ExamPatternAnalysis) -> ExamPatternAnalysis:
+    conn = get_db_connection()
+    conn.execute("""
+    INSERT OR REPLACE INTO past_paper_patterns (
+        id, subject, grade, board, analyzed_papers_count,
+        top_frequent_topics_json, repeated_concepts_json,
+        under_tested_topics_json, recommended_practice_distribution_json,
+        summary, analyzed_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        epa.id, epa.subject, epa.grade, epa.board, epa.analyzed_papers_count,
+        json.dumps([t.dict() for t in epa.top_frequent_topics]),
+        json.dumps(epa.repeated_concepts),
+        json.dumps(epa.under_tested_topics),
+        json.dumps(epa.recommended_practice_distribution),
+        epa.summary, epa.analyzed_at
+    ))
+    conn.commit()
+    conn.close()
+    return epa
+

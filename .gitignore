@@ -28,3 +28,6 @@ backend/data/chroma_db/
 # OS
 .DS_Store
 Thumbs.db
+
+# Scratch / Temp
+scratch/

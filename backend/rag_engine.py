@@ -405,6 +405,20 @@ class RAGEngine:
         self.ensure_book_indexed(book_id)
         return self.vector_index.get_all_for_chapters(book_id, [chapter_id])
 
+    def get_all_for_chapters(self, book_id: Optional[str] = None, chapter_ids: Optional[List[str]] = None) -> List[TextChunk]:
+        """Returns all text chunks indexed for the given book and chapter IDs."""
+        if book_id and book_id not in ["all", "global", "*"]:
+            self.ensure_book_indexed(book_id)
+        return self.vector_index.get_all_for_chapters(book_id, chapter_ids)
+
+    def search_passages(self, query: str, book_id: Optional[str] = None, chapter_ids: Optional[List[str]] = None, top_k: int = 5) -> List[QuestionSourceCitation]:
+        """Searches and returns formatted textbook citations for question generation."""
+        return self.query_textbook(query=query, book_id=book_id, chapter_ids=chapter_ids, top_k=top_k)
+
+    def retrieve_citations(self, query: str, book_id: Optional[str] = None, chapter_ids: Optional[List[str]] = None, top_k: int = 5) -> List[QuestionSourceCitation]:
+        """Alias for query_textbook."""
+        return self.query_textbook(query=query, book_id=book_id, chapter_ids=chapter_ids, top_k=top_k)
+
 
 # Global RAG Engine Instance
 rag_engine = RAGEngine()

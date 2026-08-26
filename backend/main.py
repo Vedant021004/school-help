@@ -13,7 +13,11 @@ from backend.models import (
     Book, Chapter, PaperFormat, SectionFormat, QuestionPaper,
     QuestionItem, QuestionSourceCitation, AnswerKey, AnswerKeyItem,
     QuestionPaperGenerationRequest, ChatRequest, ChatResponse,
-    QuestionBankItem, PastPaperAnalysis
+    QuestionBankItem, PastPaperAnalysis, KnowledgeGraph, MindMapData,
+    ChapterExplanation, ChapterNotes, SlideDeck, SlideItem, TextbookQAItem,
+    ChapterWorksheet, NewTermItem, DiagramQuestionItem, LessonPlan,
+    LiveSession, StudentSubmission, LiveClassroomAnalytics,
+    ExamPatternAnalysis, EduAgentQCReport
 )
 import backend.database as db
 from backend.pdf_processor import detect_chapters_from_pdf, extract_and_chunk_pdf
@@ -22,13 +26,21 @@ from backend.llm_service import llm_service
 from backend.grounding_verifier import grounding_verifier
 from backend.quality_checker import quality_checker
 from backend.format_parser import extract_format_from_file, parse_format_from_text
-from backend.previous_paper_analyzer import analyze_past_paper_file
+from backend.previous_paper_analyzer import analyze_past_paper_file, get_pattern_based_recommendations
+from backend.knowledge_graph import knowledge_graph_engine
+from backend.model_router import model_router
+from backend.edu_agent_qc import edu_agent_qc
+from backend.teaching_suite_service import teaching_suite_service
 from backend.exporters import (
-    export_question_paper_pdf, export_answer_key_pdf, export_question_paper_docx
+    export_question_paper_pdf, export_answer_key_pdf, export_question_paper_docx,
+    export_presentation_pptx, export_worksheet_pdf, export_chapter_notes_pdf,
+    export_textbook_chapter_pdf
 )
 
 from backend.ncert_service import search_ncert_catalog, import_ncert_textbook
 from backend.ncert_catalog_data import FULL_NCERT_CATALOG
+from backend.presenton_engine import presenton_engine, PresentOnDeck, PresentOnSlide, THEMES_CONFIG
+from backend.ncert_study_notes_service import ncert_study_notes_service, NcertStudyCompleteNote
 # Initialize database schema and seeds
 db.init_db()
 
@@ -280,6 +292,78 @@ def reindex_book(book_id: str):
 def delete_book(book_id: str):
     success = db.delete_book(book_id)
     return {"success": success}
+
+
+@router.get("/books/{book_id}/read")
+def read_book_content(book_id: str, chapter_id: Optional[str] = None):
+    """
+    Returns complete readable chapter passages, excerpts, and pages for interactive reading.
+    """
+    book = db.get_book_by_id(book_id)
+    if not book:
+        code = book_id.replace("ncert-", "")
+        if any(b["code"] == code for b in FULL_NCERT_CATALOG):
+            from backend.ncert_service import import_ncert_textbook
+            book = import_ncert_textbook(code)
+        else:
+            raise HTTPException(status_code=404, detail="Book not found")
+
+    rag_engine.ensure_book_indexed(book.id)
+    if chapter_id:
+        chunks = rag_engine.get_all_for_chapters(book.id, [chapter_id])
+    else:
+        chunks = rag_engine.get_all_for_chapters(book.id, None)
+
+    return {
+        "book": book,
+        "total_chunks": len(chunks),
+        "passages": [
+            {
+                "id": c.id,
+                "content": c.content,
+                "page_number": c.metadata.page_number,
+                "chapter_id": c.metadata.chapter_id,
+                "chapter_title": c.metadata.chapter_title,
+                "section_name": c.metadata.section_name or "Main Excerpt"
+            }
+            for c in chunks
+        ]
+    }
+
+
+@router.get("/books/{book_id}/pdf")
+def serve_book_pdf(book_id: str, chapter_id: Optional[str] = None):
+    """
+    Streams the raw uploaded textbook PDF file or generates a real textbook PDF preview.
+    """
+    book = db.get_book_by_id(book_id)
+    if not book:
+        code = book_id.replace("ncert-", "")
+        if any(b["code"] == code for b in FULL_NCERT_CATALOG):
+            from backend.ncert_service import import_ncert_textbook
+            book = import_ncert_textbook(code)
+        else:
+            raise HTTPException(status_code=404, detail="Book not found")
+
+    if book.file_path and os.path.exists(book.file_path) and os.path.getsize(book.file_path) > 1000:
+        return FileResponse(
+            book.file_path,
+            filename=book.filename or f"{book.title}.pdf",
+            media_type="application/pdf"
+        )
+
+    # Generate a real textbook PDF preview from indexed passages
+    rag_engine.ensure_book_indexed(book.id)
+    chunks = rag_engine.get_all_for_chapters(book.id, [chapter_id] if chapter_id else None)
+    if not chunks:
+        chunks = rag_engine.get_all_for_chapters(book.id, None)
+
+    pdf_path = export_textbook_chapter_pdf(book, chunks, chapter_id)
+    return FileResponse(
+        pdf_path,
+        filename=f"{book.title.replace(' ', '_')}_Textbook.pdf",
+        media_type="application/pdf"
+    )
 
 
 # ==========================================
@@ -923,6 +1007,409 @@ def update_settings(payload: Dict[str, Any]):
 
     return {"message": "Settings updated successfully"}
 
+
+# ==========================================
+# 11. AI TEACHER COPILOT API
+# ==========================================
+
+@router.post("/copilot/teach-chapter")
+def copilot_teach_chapter(payload: Dict[str, Any]):
+    book_id = payload.get("book_id", "book-sci-10")
+    chapter_id = payload.get("chapter_id", "chap-sci-10-1")
+    return teaching_suite_service.generate_complete_teaching_package(book_id, chapter_id)
+
+
+@router.post("/copilot/explain", response_model=ChapterExplanation)
+def copilot_explain_chapter(payload: Dict[str, Any]):
+    book_id = payload.get("book_id", "book-sci-10")
+    chapter_id = payload.get("chapter_id", "chap-sci-10-1")
+    mode = payload.get("mode", "student_friendly")
+    return teaching_suite_service.explain_chapter(book_id, chapter_id, mode)
+
+
+@router.post("/copilot/notes", response_model=ChapterNotes)
+def copilot_chapter_notes(payload: Dict[str, Any]):
+    book_id = payload.get("book_id", "book-sci-10")
+    chapter_id = payload.get("chapter_id", "chap-sci-10-1")
+    return teaching_suite_service.generate_chapter_notes(book_id, chapter_id)
+
+
+@router.post("/copilot/notes/download-pdf")
+def copilot_download_notes_pdf(notes_payload: Dict[str, Any]):
+    notes = ChapterNotes(**notes_payload)
+    pdf_path = export_chapter_notes_pdf(notes)
+    return FileResponse(
+        pdf_path,
+        filename=os.path.basename(pdf_path),
+        media_type="application/pdf"
+    )
+
+
+@router.post("/copilot/ppt", response_model=SlideDeck)
+def copilot_slide_deck(payload: Dict[str, Any]):
+    book_id = payload.get("book_id", "book-sci-10")
+    chapter_id = payload.get("chapter_id", "chap-sci-10-1")
+    slide_count = int(payload.get("slide_count", 10))
+    return teaching_suite_service.generate_slide_deck(book_id, chapter_id, slide_count)
+
+
+@router.post("/copilot/ppt/download")
+def copilot_download_pptx(deck_payload: Dict[str, Any]):
+    deck = SlideDeck(**deck_payload)
+    pptx_path = export_presentation_pptx(deck)
+    return FileResponse(
+        pptx_path,
+        filename=os.path.basename(pptx_path),
+        media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    )
+
+
+@router.post("/copilot/textbook-solutions", response_model=List[TextbookQAItem])
+def copilot_textbook_solutions(payload: Dict[str, Any]):
+    book_id = payload.get("book_id", "book-sci-10")
+    chapter_id = payload.get("chapter_id", "chap-sci-10-1")
+    return teaching_suite_service.solve_textbook_questions(book_id, chapter_id)
+
+
+@router.post("/copilot/worksheet", response_model=ChapterWorksheet)
+def copilot_chapter_worksheet(payload: Dict[str, Any]):
+    book_id = payload.get("book_id", "book-sci-10")
+    chapter_id = payload.get("chapter_id", "chap-sci-10-1")
+    worksheet_type = payload.get("worksheet_type", "practice")
+    question_count = int(payload.get("question_count", 5))
+    return teaching_suite_service.generate_worksheet(book_id, chapter_id, worksheet_type, question_count)
+
+
+@router.post("/copilot/worksheet/download-pdf")
+def copilot_download_worksheet_pdf(payload: Dict[str, Any]):
+    worksheet = ChapterWorksheet(**payload.get("worksheet", {}))
+    school_name = payload.get("school_name", "Central Academy")
+    pdf_path = export_worksheet_pdf(worksheet, school_name)
+    return FileResponse(
+        pdf_path,
+        filename=os.path.basename(pdf_path),
+        media_type="application/pdf"
+    )
+
+
+@router.post("/copilot/terms", response_model=List[NewTermItem])
+def copilot_new_terms(payload: Dict[str, Any]):
+    book_id = payload.get("book_id", "book-sci-10")
+    chapter_id = payload.get("chapter_id", "chap-sci-10-1")
+    return teaching_suite_service.extract_new_terms(book_id, chapter_id)
+
+
+@router.post("/copilot/diagram-worksheet", response_model=DiagramQuestionItem)
+def copilot_diagram_worksheet(payload: Dict[str, Any]):
+    book_id = payload.get("book_id", "book-sci-10")
+    chapter_id = payload.get("chapter_id", "chap-sci-10-1")
+    return teaching_suite_service.generate_diagram_worksheet(book_id, chapter_id)
+
+
+@router.post("/copilot/lesson-plan", response_model=LessonPlan)
+def copilot_lesson_plan(payload: Dict[str, Any]):
+    book_id = payload.get("book_id", "book-sci-10")
+    chapter_id = payload.get("chapter_id", "chap-sci-10-1")
+    duration = int(payload.get("duration_minutes", 45))
+    return teaching_suite_service.generate_lesson_plan(book_id, chapter_id, duration)
+
+
+@router.post("/copilot/mindmap", response_model=MindMapData)
+def copilot_mind_map(payload: Dict[str, Any]):
+    book_id = payload.get("book_id", "book-sci-10")
+    chapter_id = payload.get("chapter_id", "chap-sci-10-1")
+    chapter_name = payload.get("chapter_name", "Chapter Topic")
+    return knowledge_graph_engine.generate_mind_map(book_id, chapter_id, chapter_name)
+
+
+@router.post("/copilot/knowledge-graph", response_model=KnowledgeGraph)
+def copilot_knowledge_graph(payload: Dict[str, Any]):
+    book_id = payload.get("book_id", "book-sci-10")
+    chapter_id = payload.get("chapter_id", "chap-sci-10-1")
+    chapter_name = payload.get("chapter_name", "Chapter Topic")
+    return knowledge_graph_engine.get_or_build_graph(book_id, chapter_id, chapter_name)
+
+
+# ==========================================
+# 12. LIVE CLASSROOM WORKSHEET API
+# ==========================================
+
+@router.post("/copilot/live/create-session", response_model=LiveSession)
+def create_live_classroom_session(payload: Dict[str, Any]):
+    room_code = payload.get("room_code") or f"ROOM-{uuid.uuid4().hex[:6].upper()}"
+    session = LiveSession(
+        room_code=room_code,
+        teacher_name=payload.get("teacher_name", "Teacher"),
+        book_id=payload.get("book_id", "book-sci-10"),
+        chapter_id=payload.get("chapter_id", "chap-sci-10-1"),
+        chapter_name=payload.get("chapter_name", "Chapter Topic"),
+        worksheet_title=payload.get("worksheet_title", "Live Classroom Assessment"),
+        questions=payload.get("questions", []),
+        is_active=True
+    )
+    return db.create_live_session(session)
+
+
+@router.get("/copilot/live/active-sessions", response_model=List[LiveSession])
+def get_active_live_classroom_sessions():
+    sessions = db.get_active_live_sessions()
+    if not sessions:
+        # Create a default active live quiz room if none currently active
+        default_session = LiveSession(
+            room_code="NCERT-101",
+            teacher_name="AI Teacher Master",
+            book_id="book-sci-10",
+            chapter_id="chap-sci-10-1",
+            chapter_name="Chemical Reactions and Equations",
+            worksheet_title="Classroom Rapid Diagnostic Assessment",
+            questions=[
+                {
+                    "question_number": 1,
+                    "question_text": "Which gas is evolved when dilute Sulphuric acid reacts with Zinc granules?",
+                    "question_type": "mcq",
+                    "marks": 1,
+                    "options": ["A. Oxygen", "B. Nitrogen", "C. Hydrogen", "D. Carbon dioxide"],
+                    "correct_answer": "C",
+                    "explanation": "Zn(s) + H2SO4(aq) -> ZnSO4(aq) + H2(g). Hydrogen gas burns with a characteristic pop sound."
+                },
+                {
+                    "question_number": 2,
+                    "question_text": "What type of chemical reaction is the digestion of food in our body?",
+                    "question_type": "mcq",
+                    "marks": 1,
+                    "options": ["A. Combination Reaction", "B. Decomposition Reaction", "C. Displacement Reaction", "D. Precipitation Reaction"],
+                    "correct_answer": "B",
+                    "explanation": "During digestion, complex food molecules (carbohydrates, proteins) are broken down into simpler substances like glucose and amino acids."
+                },
+                {
+                    "question_number": 3,
+                    "question_text": "Why is Nitrogen gas used in packing oily and fatty food products like potato chips?",
+                    "question_type": "mcq",
+                    "marks": 1,
+                    "options": ["A. To improve food color", "B. To increase food sweetness", "C. To prevent oxidation and rancidity", "D. To cook the food in packet"],
+                    "correct_answer": "C",
+                    "explanation": "Nitrogen is an unreactive inert gas that displaces oxygen and prevents aerial oxidation of fats and oils."
+                }
+            ],
+            is_active=True
+        )
+        created = db.create_live_session(default_session)
+        sessions = [created]
+    return sessions
+
+
+@router.get("/copilot/live/session/{room_code}", response_model=LiveSession)
+def get_live_classroom_session(room_code: str):
+    session = db.get_live_session(room_code)
+    if not session:
+        raise HTTPException(status_code=404, detail="Live session not found")
+    return session
+
+
+@router.post("/copilot/live/close/{room_code}")
+def close_live_classroom_session(room_code: str):
+    return {"success": db.close_live_session(room_code)}
+
+
+@router.post("/copilot/live/submit", response_model=StudentSubmission)
+def submit_student_live_answer(payload: Dict[str, Any]):
+    room_code = payload.get("room_code")
+    session = db.get_live_session(room_code)
+    if not session or not session.is_active:
+        raise HTTPException(status_code=400, detail="Live session is closed or invalid")
+
+    student_name = payload.get("student_name", "Anonymous Student")
+    student_answers = payload.get("answers", {})
+
+    # Calculate score against questions
+    score = 0
+    total_marks = 0
+    for q in session.questions:
+        q_num = str(q.get("question_number", ""))
+        q_marks = int(q.get("marks", 1))
+        total_marks += q_marks
+        c_ans = q.get("correct_answer", "").strip().lower()
+        s_ans = str(student_answers.get(q_num, "")).strip().lower()
+
+        if c_ans and (s_ans == c_ans or s_ans.startswith(c_ans[:1]) or c_ans.startswith(s_ans[:1])):
+            score += q_marks
+
+    accuracy = round((score / max(1, total_marks)) * 100, 1)
+    sub = StudentSubmission(
+        room_code=room_code,
+        student_name=student_name,
+        answers=student_answers,
+        score=score,
+        total_marks=total_marks,
+        accuracy_percentage=accuracy
+    )
+    return db.submit_live_answer(sub)
+
+
+@router.get("/copilot/live/analytics/{room_code}", response_model=LiveClassroomAnalytics)
+def get_live_classroom_analytics(room_code: str):
+    session = db.get_live_session(room_code)
+    if not session:
+        raise HTTPException(status_code=404, detail="Live session not found")
+
+    submissions = db.get_live_submissions(room_code)
+    total_part = len(submissions)
+    if total_part == 0:
+        return LiveClassroomAnalytics(
+            room_code=room_code,
+            total_participants=0,
+            average_score=0.0,
+            accuracy_rate=0.0,
+            completion_rate=0.0,
+            leaderboard=[],
+            ai_insights="Waiting for students to join and submit answers."
+        )
+
+    avg_score = round(sum(s.score for s in submissions) / total_part, 1)
+    avg_accuracy = round(sum(s.accuracy_percentage for s in submissions) / total_part, 1)
+
+    leaderboard = [
+        {"rank": idx + 1, "student_name": s.student_name, "score": s.score, "total_marks": s.total_marks, "accuracy": s.accuracy_percentage}
+        for idx, s in enumerate(submissions[:10])
+    ]
+
+    ai_insights = (
+        f"Class performance: {total_part} student(s) participated with an average accuracy of {avg_accuracy}%. "
+        f"Top score achieved is {submissions[0].score}/{submissions[0].total_marks}."
+    )
+
+    return LiveClassroomAnalytics(
+        room_code=room_code,
+        total_participants=total_part,
+        average_score=avg_score,
+        accuracy_rate=avg_accuracy,
+        completion_rate=100.0,
+        leaderboard=leaderboard,
+        ai_insights=ai_insights
+    )
+
+
+# ==========================================
+# 13. EXAMRAG PATTERN ANALYTICS API
+# ==========================================
+
+@router.post("/copilot/exam-patterns", response_model=ExamPatternAnalysis)
+def copilot_exam_patterns(payload: Dict[str, Any]):
+    subject = payload.get("subject", "Science")
+    grade = payload.get("grade", "Class 10")
+    return get_pattern_based_recommendations(subject, grade)
+
+
+# ==========================================
+# 14. PRESENTON AI PRESENTATION ENGINE API
+# ==========================================
+
+@router.post("/presenton/generate", response_model=PresentOnDeck)
+def generate_presenton_deck_endpoint(payload: Dict[str, Any]):
+    chapter_name = payload.get("chapter_name", "Chapter Lecture")
+    subject = payload.get("subject", "Science")
+    grade = payload.get("grade", "Class 10")
+    slide_count = int(payload.get("slide_count", 10))
+    theme = payload.get("theme", "modern_indigo")
+    book_id = payload.get("book_id", "")
+    chapter_id = payload.get("chapter_id", "")
+
+    context_text = ""
+    if book_id and chapter_id:
+        chunks = rag_engine.get_all_for_chapters(book_id, [chapter_id])
+        if chunks:
+            context_text = "\n\n".join([f"[Page {c.metadata.page_number}]: {c.content[:400]}" for c in chunks[:8]])
+
+    return presenton_engine.generate_presentation(
+        chapter_name=chapter_name,
+        subject=subject,
+        grade=grade,
+        context_text=context_text,
+        slide_count=slide_count,
+        theme=theme
+    )
+
+
+@router.get("/presenton/themes")
+def get_presenton_themes():
+    return THEMES_CONFIG
+
+
+@router.post("/presenton/download-pptx")
+def download_presenton_pptx_endpoint(deck_payload: Dict[str, Any]):
+    deck = PresentOnDeck(**deck_payload)
+    slides = [
+        SlideItem(
+            slide_number=s.slide_number,
+            title=s.title,
+            layout=s.layout,
+            bullet_points=s.bullet_points or (s.steps and [f"Step {st['step']}: {st['title']} - {st['desc']}" for st in s.steps]) or (s.stats_items and [f"{st['label']}: {st['value']}" for st in s.stats_items]) or [],
+            key_definition=s.key_definition,
+            activity_box=s.activity_box,
+            speaker_notes=s.speaker_notes
+        ) for s in deck.slides
+    ]
+    std_deck = SlideDeck(
+        book_id=deck.id,
+        chapter_id=deck.id,
+        chapter_name=deck.chapter_name,
+        title=deck.title,
+        subtitle=deck.subtitle or f"{deck.grade} {deck.subject}",
+        grade=deck.grade,
+        subject=deck.subject,
+        slides=slides
+    )
+    pptx_path = export_presentation_pptx(std_deck)
+    return FileResponse(
+        pptx_path,
+        filename=f"PresentOn_{deck.chapter_name.replace(' ', '_')}.pptx",
+        media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    )
+
+
+# ==========================================
+# 15. NCERTSTUDY.COM CLASS 6-12 NOTES API
+# ==========================================
+
+@router.get("/ncertstudy/classes")
+def get_ncertstudy_classes():
+    return ncert_study_notes_service.get_available_classes_and_subjects()
+
+
+@router.post("/ncertstudy/notes", response_model=NcertStudyCompleteNote)
+def get_ncertstudy_notes_endpoint(payload: Dict[str, Any]):
+    class_grade = payload.get("class_grade", "Class 10")
+    subject = payload.get("subject", "Science")
+    chapter_title = payload.get("chapter_title", "Chemical Reactions and Equations")
+    chapter_number = int(payload.get("chapter_number", 1))
+    book_id = payload.get("book_id", None)
+    return ncert_study_notes_service.get_chapter_notes(
+        class_grade=class_grade,
+        subject=subject,
+        chapter_title=chapter_title,
+        chapter_number=chapter_number,
+        book_id=book_id
+    )
+
+
+@router.get("/ncertstudy/pdf")
+def get_ncertstudy_notes_pdf_endpoint(
+    class_grade: str = "Class 10",
+    subject: str = "Science",
+    chapter_title: str = "Chemical Reactions and Equations"
+):
+    note = ncert_study_notes_service.get_chapter_notes(
+        class_grade=class_grade,
+        subject=subject,
+        chapter_title=chapter_title,
+        chapter_number=1
+    )
+    pdf_path = ncert_study_notes_service.generate_notes_pdf(note)
+    return FileResponse(
+        pdf_path,
+        filename=f"NCERTStudy_Notes_{class_grade}_{subject}_{chapter_title.replace(' ', '_')}.pdf",
+        media_type="application/pdf"
+    )
 
 
 # Mount all API endpoints with /api/index.py, /api/index, /api prefix AND without prefix (for Vercel serverless compatibility)

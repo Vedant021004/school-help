@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { 
   fetchBooks, uploadBook, deleteBook, reindexBook, 
-  fetchNcertCatalog, fetchNcertMeta, importNcertBook 
+  fetchNcertCatalog, fetchNcertMeta, importNcertBook, fetchBookReaderContent 
 } from '../api';
 
 const DEFAULT_NCERT_CLASSES = [
@@ -33,6 +33,11 @@ export default function BookLibrary({ onNavigate, onSelectBookForChat, onSelectB
   const [searchQuery, setSearchQuery] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('All');
   
+  // Reader Modal State
+  const [readerModalBook, setReaderModalBook] = useState(null);
+  const [readerData, setReaderData] = useState(null);
+  const [readerLoading, setReaderLoading] = useState(false);
+
   // NCERT Portal state
   const [ncertMeta, setNcertMeta] = useState(null);
   const [ncertCatalog, setNcertCatalog] = useState([]);
@@ -395,31 +400,54 @@ export default function BookLibrary({ onNavigate, onSelectBookForChat, onSelectB
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="px-6 py-4 bg-slate-50/70 border-t border-slate-100 flex items-center justify-between gap-2">
+                  <div className="px-6 py-4 bg-slate-50/70 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-2">
                     <button
-                      onClick={() => setSelectedBook(book)}
-                      className="flex-1 px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-100 transition flex items-center justify-center gap-1.5 shadow-sm"
+                      onClick={async () => {
+                        setReaderModalBook(book);
+                        try {
+                          setReaderLoading(true);
+                          const data = await fetchBookReaderContent(book.id);
+                          setReaderData(data);
+                        } catch (err) {
+                          console.error(err);
+                        } finally {
+                          setReaderLoading(false);
+                        }
+                      }}
+                      className="px-2 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 text-xs font-bold hover:bg-slate-100 transition flex items-center justify-center gap-1 shadow-sm"
+                      title="Read full textbook chapters"
                     >
-                      <Eye className="w-3.5 h-3.5 text-slate-500" /> Open Chapters
+                      <BookOpen className="w-3.5 h-3.5 text-indigo-600" /> Read
+                    </button>
+                    <button
+                      onClick={() => {
+                        onSelectBookForPaper(book.id);
+                        onNavigate('copilot');
+                      }}
+                      className="px-2 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black transition flex items-center justify-center gap-1 shadow-sm"
+                      title="AI Teacher Copilot"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" /> Teach
                     </button>
                     <button
                       onClick={() => {
                         onSelectBookForPaper(book.id);
                         onNavigate('generate');
                       }}
-                      className="flex-1 px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition flex items-center justify-center gap-1.5 shadow-sm"
+                      className="px-2 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition flex items-center justify-center gap-1 shadow-sm"
+                      title="Generate Question Paper"
                     >
-                      <Sparkles className="w-3.5 h-3.5" /> Generate Paper
+                      <FileText className="w-3.5 h-3.5" /> Paper
                     </button>
                     <button
                       onClick={() => {
                         onSelectBookForChat(book.id);
                         onNavigate('chat');
                       }}
-                      className="px-3 py-2 rounded-lg bg-slate-800 text-white text-xs font-bold hover:bg-slate-900 transition flex items-center justify-center gap-1.5 shadow-sm"
+                      className="px-2 py-2 rounded-xl bg-slate-800 text-white text-xs font-bold hover:bg-slate-900 transition flex items-center justify-center gap-1 shadow-sm"
                       title="Chat with this Book"
                     >
-                      <MessageSquare className="w-3.5 h-3.5" />
+                      <MessageSquare className="w-3.5 h-3.5 text-amber-300" /> Chat
                     </button>
                   </div>
                 </div>
@@ -826,6 +854,66 @@ export default function BookLibrary({ onNavigate, onSelectBookForChat, onSelectB
               >
                 <Sparkles className="w-4 h-4" /> Generate Paper from this Book
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TEXTBOOK READER MODAL                                                     */}
+      {/* ========================================================================= */}
+      {readerModalBook && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 lg:p-8">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95">
+            <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md">
+                  <BookOpen className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 text-base">{readerModalBook.title}</h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    {readerModalBook.grade} • {readerModalBook.subject} • {readerData?.passages?.length || 0} Indexed Excerpts
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setReaderModalBook(null)}
+                className="p-2 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-200 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 p-6 lg:p-8 overflow-y-auto bg-slate-100/50 space-y-4">
+              {readerLoading ? (
+                <div className="py-16 text-center space-y-3">
+                  <RefreshCw className="w-8 h-8 text-indigo-600 animate-spin mx-auto" />
+                  <p className="text-xs font-bold text-slate-600">Retrieving Full Textbook Passages...</p>
+                </div>
+              ) : readerData && readerData.passages && readerData.passages.length > 0 ? (
+                <div className="max-w-3xl mx-auto space-y-6">
+                  {readerData.passages.map((p, pIdx) => (
+                    <div key={pIdx} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-3">
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <span className="text-[10px] font-black uppercase text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
+                          Page {p.page_number} • {p.section_name || p.chapter_title}
+                        </span>
+                        <span className="text-[10px] font-bold text-slate-400">
+                          Excerpt #{pIdx + 1}
+                        </span>
+                      </div>
+                      <p className="text-sm text-slate-800 leading-relaxed font-serif whitespace-pre-line">
+                        {p.content}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-12 text-center text-xs text-slate-400 font-medium">
+                  No passages found for this textbook.
+                </div>
+              )}
             </div>
           </div>
         </div>

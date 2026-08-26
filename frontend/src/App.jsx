@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { 
   LayoutDashboard, BookOpen, MessageSquare, Sparkles, Layers, 
   FileSpreadsheet, BarChart2, Settings as SettingsIcon, Menu, X,
-  ShieldCheck, FileText, ChevronRight
+  ShieldCheck, FileText, ChevronRight, GraduationCap, Flame, BookMarked,
+  Presentation
 } from 'lucide-react';
 
 import Dashboard from './pages/Dashboard';
@@ -14,9 +15,14 @@ import BookChat from './pages/BookChat';
 import QuestionBank from './pages/QuestionBank';
 import PreviousPaperAnalyzer from './pages/PreviousPaperAnalyzer';
 import Settings from './pages/Settings';
+import TeacherCopilot from './pages/TeacherCopilot';
+import LiveClassroomStudent from './pages/LiveClassroomStudent';
+import StudentBookReader from './pages/StudentBookReader';
+import NcertStudyNotes from './pages/NcertStudyNotes';
+import PresentOnStudio from './pages/PresentOnStudio';
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState('dashboard');
+  const [currentPage, setCurrentPage] = useState('copilot');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Cross-page selection states
@@ -52,11 +58,16 @@ export default function App() {
   };
 
   const navItems = [
+    { id: 'copilot', label: 'AI Teacher Copilot', icon: GraduationCap, highlight: true },
+    { id: 'presenton', label: 'PresentOn AI Studio', icon: Presentation, badge: 'Deck' },
+    { id: 'notes_hub', label: 'NCERTStudy Notes (6-12)', icon: BookMarked, badge: 'New' },
+    { id: 'reader', label: 'NCERT eBook Reader', icon: BookOpen },
+    { id: 'live_student', label: 'Live Quiz (Student)', icon: Flame },
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'books', label: 'My Books', icon: BookOpen },
+    { id: 'books', label: 'NCERT & Books Library', icon: Layers },
     { id: 'chat', label: 'Chat with Book', icon: MessageSquare },
-    { id: 'generate', label: 'Generate Question Paper', icon: Sparkles, highlight: true },
-    { id: 'bank', label: 'Question Bank', icon: Layers },
+    { id: 'generate', label: 'Question Paper Studio', icon: Sparkles },
+    { id: 'bank', label: 'Question Bank', icon: FileText },
     { id: 'formats', label: 'Paper Formats', icon: FileSpreadsheet },
     { id: 'analyzer', label: 'Past Paper Analyzer', icon: BarChart2 },
     { id: 'settings', label: 'Settings', icon: SettingsIcon },
@@ -171,6 +182,37 @@ export default function App() {
 
         {/* Page View Rendering */}
         <main className="flex-1 p-6 lg:p-8 max-w-7xl w-full mx-auto">
+          {currentPage === 'copilot' && (
+            <TeacherCopilot
+              onNavigate={navigateTo}
+            />
+          )}
+
+          {currentPage === 'presenton' && (
+            <PresentOnStudio
+              onNavigate={navigateTo}
+            />
+          )}
+
+          {currentPage === 'notes_hub' && (
+            <NcertStudyNotes
+              onNavigate={navigateTo}
+            />
+          )}
+
+          {currentPage === 'reader' && (
+            <StudentBookReader
+              onNavigate={navigateTo}
+              initialBookId={selectedBookForChat || selectedBookForPaper}
+            />
+          )}
+
+          {currentPage === 'live_student' && (
+            <LiveClassroomStudent
+              onNavigate={navigateTo}
+            />
+          )}
+
           {currentPage === 'dashboard' && (
             <Dashboard
               onNavigate={navigateTo}
