@@ -590,6 +590,85 @@ export default function PresentOnDeck({ deck: initialDeck, onUpdateDeck, onRegen
             </div>
           )}
 
+          {curSlide.layout === 'case_study' && curSlide.case_study && (
+            <div className="space-y-4 max-w-3xl mx-auto">
+              <div className="p-6 rounded-2xl border-2 bg-indigo-950/60 border-indigo-500/40 space-y-3 shadow-xl">
+                <span className="text-[11px] font-black uppercase text-amber-300 tracking-wider block">
+                  🏭 Real-World Industrial & Daily Life Case Study
+                </span>
+                <p className="text-sm font-semibold text-white leading-relaxed">
+                  <b className="text-indigo-300">Context:</b> {curSlide.case_study.context}
+                </p>
+                <div className="p-3 bg-white/10 rounded-xl text-xs text-slate-200 leading-relaxed font-serif">
+                  <b className="text-amber-400 block pb-1">Scientific Observation & Phenomenon:</b>
+                  {curSlide.case_study.observation}
+                </div>
+                <p className="text-xs text-emerald-300 font-bold">
+                  ⚡ Engineering Impact: {curSlide.case_study.impact}
+                </p>
+              </div>
+
+              {curSlide.bullet_points && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-slate-200">
+                  {curSlide.bullet_points.map((bp, i) => (
+                    <div key={i} className="flex items-center gap-2 p-2.5 rounded-xl bg-black/30 border border-white/10">
+                      <span className="text-amber-400 font-bold">•</span>
+                      <span>{bp}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {curSlide.layout === 'common_misconceptions' && curSlide.misconception && (
+            <div className="space-y-4 max-w-3xl mx-auto">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-5 rounded-2xl border bg-rose-950/40 border-rose-600/40 space-y-2">
+                  <span className="text-[10px] font-black uppercase text-rose-400 tracking-wider block">
+                    ❌ Common Student Misconception (Myth)
+                  </span>
+                  <p className="text-xs lg:text-sm font-medium text-rose-100 leading-relaxed">
+                    {curSlide.misconception.myth}
+                  </p>
+                </div>
+
+                <div className="p-5 rounded-2xl border bg-emerald-950/40 border-emerald-500/40 space-y-2">
+                  <span className="text-[10px] font-black uppercase text-emerald-400 tracking-wider block">
+                    ✓ Scientific Reality & Board Key
+                  </span>
+                  <p className="text-xs lg:text-sm font-medium text-emerald-100 leading-relaxed">
+                    {curSlide.misconception.scientific_fact}
+                  </p>
+                </div>
+              </div>
+
+              {curSlide.misconception.clarification && (
+                <div className="p-4 rounded-xl bg-black/40 border border-white/10 text-xs text-slate-200 font-serif">
+                  💡 <b className="text-amber-300 font-sans">Teacher Clarification:</b> {curSlide.misconception.clarification}
+                </div>
+              )}
+            </div>
+          )}
+
+          {curSlide.layout === 'board_tips' && (
+            <div className="space-y-4 max-w-2xl mx-auto">
+              <span className="text-xs font-black uppercase tracking-wider text-amber-400 block text-center">
+                🎯 CBSE Board Examination Scoring Rubric & Marking Secrets
+              </span>
+              <div className="space-y-2.5">
+                {curSlide.bullet_points?.map((bp, i) => (
+                  <div key={i} className="flex items-start gap-3 p-3.5 rounded-xl bg-indigo-950/60 border border-indigo-500/30 text-xs lg:text-sm text-slate-200">
+                    <span className="w-5 h-5 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center font-black text-xs shrink-0 mt-0.5">
+                      {i + 1}
+                    </span>
+                    <span>{bp}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {curSlide.layout === 'summary_roadmap' && (
             <div className="space-y-3 max-w-2xl mx-auto">
               <span className="text-xs font-black uppercase tracking-wider text-amber-400 block text-center">
