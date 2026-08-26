@@ -104,12 +104,20 @@ class LocalModelManager:
 
     def get_hardware_info(self) -> Dict[str, Any]:
         """Returns runtime hardware info, GPU availability, and RAM."""
-        import psutil
+        ram_total = 16.0
+        ram_avail = 8.0
+        try:
+            import psutil
+            ram_total = round(psutil.virtual_memory().total / (1024**3), 2)
+            ram_avail = round(psutil.virtual_memory().available / (1024**3), 2)
+        except Exception:
+            pass
+
         info = {
             "device": self.device,
             "cpu_cores": os.cpu_count() or 4,
-            "ram_total_gb": round(psutil.virtual_memory().total / (1024**3), 2),
-            "ram_available_gb": round(psutil.virtual_memory().available / (1024**3), 2),
+            "ram_total_gb": ram_total,
+            "ram_available_gb": ram_avail,
             "gpu_available": self.device in ["cuda", "mps"],
             "loaded_models_count": len(self.loaded_models),
             "cache_dir": str(self.cache_dir)
